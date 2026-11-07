@@ -2,10 +2,14 @@ import { z } from "zod";
 
 export enum JobStatus {
   PENDING = "PENDING",
-  SCRAPING = "SCRAPING",
-  CURATING = "CURATING",
-  APPROVED = "APPROVED",
+  SCRAPING_LINKEDIN = "SCRAPING_LINKEDIN",
+  FETCHING_GITHUB = "FETCHING_GITHUB",
+  AI_SYNTHESIZING = "AI_SYNTHESIZING",
+  AWAITING_CURATION = "AWAITING_CURATION",
+  GENERATING_PDF = "GENERATING_PDF",
+  DELIVERING_EMAIL = "DELIVERING_EMAIL",
   COMPLETED = "COMPLETED",
+  FAILED = "FAILED",
 }
 
 const LINKEDIN_URL_PATTERN =
@@ -20,6 +24,7 @@ export const GenerateCVRequestSchema = z.object({
     .regex(LINKEDIN_URL_PATTERN, "Invalid LinkedIn profile URL"),
   githubUrl: z.string().regex(GITHUB_URL_PATTERN, "Invalid GitHub URL"),
   email: z.string().regex(EMAIL_PATTERN, "Invalid email address"),
+  targetRole: z.string().max(100).optional(),
 });
 
 export type GenerateCVRequestDTO = z.infer<typeof GenerateCVRequestSchema>;
