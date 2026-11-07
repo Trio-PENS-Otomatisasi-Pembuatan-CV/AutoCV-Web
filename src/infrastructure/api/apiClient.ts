@@ -6,8 +6,9 @@ export class ApiError extends Error {
     public statusText: string,
     public data: unknown
   ) {
+    const errorData = data as { detail?: string; message?: string } | undefined;
     super(
-      data?.detail || data?.message || `HTTP ${status}: ${statusText}`
+      errorData?.detail || errorData?.message || `HTTP ${status}: ${statusText}`
     );
     this.name = "ApiError";
   }

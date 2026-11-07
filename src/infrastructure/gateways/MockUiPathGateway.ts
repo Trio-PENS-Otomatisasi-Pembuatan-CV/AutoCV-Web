@@ -16,15 +16,18 @@ type MockJob = {
 };
 
 function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
+  const linkedinUrl = from.linkedinUrl || from.linkedInUrl || "";
+  const email = from.recipientEmail || from.email || "";
+
   return {
     profile: {
       fullName: "Jane Mustika Pratama",
       headline: "Fullstack Cloud & AI Engineer",
-      email: from.email,
+      email,
       phone: "+62 812-1234-5678",
       location: "Surabaya, Indonesia",
       summary: "Software Engineer berorientasi solusi membangun apps cloud berskala besar...",
-      linkedinUrl: from.linkedInUrl,
+      linkedinUrl,
       githubUrl: from.githubUrl,
     },
     experiences: [
@@ -143,7 +146,7 @@ export class MockUiPathGateway implements IUiPathGateway {
     return { jobId };
   }
 
-  private advanceJob(jobId: string, request: GenerateCVRequestDTO, fromStatus?: JobStatus) {
+  private advanceJob(jobId: string, request: GenerateCVRequestDTO) {
     const job = jobs.get(jobId);
     if (!job) return;
     const status = job.status;
@@ -166,7 +169,7 @@ export class MockUiPathGateway implements IUiPathGateway {
         job.downloadUrl = `/mock/${jobId}/download.pdf`;
       }
       jobs.set(jobId, job);
-      this.advanceJob(jobId, request, status);
+      this.advanceJob(jobId, request);
     }, delay);
   }
 
@@ -187,7 +190,9 @@ export class MockUiPathGateway implements IUiPathGateway {
     const job = jobs.get(jobId);
     if (!job) throw new Error("Job not found");
     if (job.status !== JobStatus.AWAITING_CURATION) throw new Error("Job is not awaiting curation");
-    // Accept but ignore curatedData
+    if (curatedData && typeof curatedData === "object") {
+      job.draftData = { ...job.draftData, ...(curatedData as Partial<ResumePayload>) } as ResumePayload;
+    }
     job.status = JobStatus.GENERATING_PDF;
     job.progress = progressForStatus(JobStatus.GENERATING_PDF);
     jobs.set(jobId, job);

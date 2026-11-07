@@ -7,3 +7,5 @@ export function createGateway(): IUiPathGateway {
     ? new LiveUiPathGateway()
     : new MockUiPathGateway();
 }
+
+export const getUiPathGateway = createGateway;

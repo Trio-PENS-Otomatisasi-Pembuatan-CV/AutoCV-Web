@@ -19,11 +19,20 @@ const GITHUB_URL_PATTERN =
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const GenerateCVRequestSchema = z.object({
+  linkedinUrl: z
+    .string()
+    .regex(LINKEDIN_URL_PATTERN, "Invalid LinkedIn profile URL")
+    .optional(),
   linkedInUrl: z
     .string()
-    .regex(LINKEDIN_URL_PATTERN, "Invalid LinkedIn profile URL"),
+    .regex(LINKEDIN_URL_PATTERN, "Invalid LinkedIn profile URL")
+    .optional(),
   githubUrl: z.string().regex(GITHUB_URL_PATTERN, "Invalid GitHub URL"),
-  email: z.string().regex(EMAIL_PATTERN, "Invalid email address"),
+  recipientEmail: z
+    .string()
+    .regex(EMAIL_PATTERN, "Invalid email address")
+    .optional(),
+  email: z.string().regex(EMAIL_PATTERN, "Invalid email address").optional(),
   targetRole: z.string().max(100).optional(),
 });
 
