@@ -3,7 +3,13 @@ import { ProjectCard } from "../molecules/ProjectCard";
 import { ExperienceItem } from "../molecules/ExperienceItem";
 import { ResumeDocument } from "./ResumeDocument";
 import { Button } from "../atoms/Button";
-import { Sparkles, CheckCircle2, RotateCcw, ShieldCheck } from "lucide-react";
+import {
+  Sparkles,
+  CheckCircle2,
+  RotateCcw,
+  ShieldCheck,
+  ArrowLeft,
+} from "lucide-react";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 
 export interface CurationDashboardProps {
@@ -14,6 +20,7 @@ export interface CurationDashboardProps {
   onRegenerateSummary: () => void;
   onRerunSynthesis: () => void;
   onApprove: () => void;
+  onBackToInput?: () => void;
   isApproving?: boolean;
 }
 
@@ -25,6 +32,7 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
   onRegenerateSummary,
   onRerunSynthesis,
   onApprove,
+  onBackToInput,
   isApproving = false,
 }) => {
   const selectedCount = resume.projects.filter((p) => p.isSelected !== false).length;
@@ -34,15 +42,25 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
       {/* Page Header */}
       <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-400">
-            <span>Dossier</span>
-            <span>/</span>
-            <span className="text-slate-600 font-semibold">
-              {resume.profile.fullName} — {resume.profile.headline || "Candidate"}
-            </span>
+          <div className="mb-2 flex items-center gap-3">
+            {onBackToInput && (
+              <button
+                type="button"
+                onClick={onBackToInput}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
+              >
+                <ArrowLeft className="size-3.5" /> Back to Profiles
+              </button>
+            )}
+            <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
+              <span>/</span>
+              <span className="text-slate-600 font-semibold">
+                {resume.profile.fullName} — {resume.profile.headline || "Candidate"}
+              </span>
+            </div>
           </div>
           <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-slate-900">
-            Curation Studio: Review & Direct AI Draft
+            Curation Studio: Review &amp; Direct AI Draft
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-slate-600">
             <span className="font-semibold text-blue-600">#HumanInTheLead:</span> You
@@ -130,7 +148,7 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
           <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
             <div className="mb-4">
               <h3 className="text-sm font-bold text-slate-900">
-                Work Experience & Skills
+                Work Experience &amp; Skills
               </h3>
               <p className="text-xs text-slate-500">
                 Refine STAR bullet points for maximum impact
@@ -149,15 +167,28 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
           </div>
 
           {/* Bottom Action Bar */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs flex flex-wrap items-center justify-between gap-3 sticky bottom-20 z-20">
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={onRerunSynthesis}
-              icon={<RotateCcw className="size-4" />}
-            >
-              Re-run AI Synthesis
-            </Button>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs flex flex-wrap items-center justify-between gap-3 sticky bottom-6 z-20">
+            <div className="flex items-center gap-2">
+              {onBackToInput && (
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={onBackToInput}
+                  icon={<ArrowLeft className="size-4" />}
+                >
+                  Back
+                </Button>
+              )}
+
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={onRerunSynthesis}
+                icon={<RotateCcw className="size-4" />}
+              >
+                Re-run AI
+              </Button>
+            </div>
 
             <Button
               variant="primary"

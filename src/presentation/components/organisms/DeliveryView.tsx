@@ -8,9 +8,10 @@ import {
   Copy,
   Check,
   Printer,
-  Sparkles,
   ShieldCheck,
   CheckCircle,
+  ArrowLeft,
+  PlusCircle,
 } from "lucide-react";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 
@@ -20,6 +21,8 @@ export interface DeliveryViewProps {
   onDownloadPdf: () => void;
   onDownloadWord?: () => void;
   onResendEmail?: () => void;
+  onBackToCuration?: () => void;
+  onCreateAnother?: () => void;
   isDownloading?: boolean;
 }
 
@@ -29,6 +32,8 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
   onDownloadPdf,
   onDownloadWord,
   onResendEmail,
+  onBackToCuration,
+  onCreateAnother,
   isDownloading = false,
 }) => {
   const [copied, setCopied] = useState(false);
@@ -62,7 +67,7 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
       <section className="text-center print:hidden">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200/60 ring-inset">
           <CheckCircle className="size-3.5 text-emerald-600" />
-          ATS Verified & Human Approved
+          ATS Verified &amp; Human Approved
         </span>
         <h1 className="mx-auto mt-4 max-w-[680px] text-3xl sm:text-[36px] font-bold tracking-tight text-slate-900">
           Your ATS-Compliant Resume is Ready
@@ -175,8 +180,31 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
         </div>
       </div>
 
+      {/* Secondary Navigation Row: Back to Curation & Create Another Resume */}
+      <div className="mx-auto mt-4 max-w-[840px] flex items-center justify-between px-2 print:hidden">
+        {onBackToCuration && (
+          <button
+            type="button"
+            onClick={onBackToCuration}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="size-3.5" /> Back to Edit Curation
+          </button>
+        )}
+
+        {onCreateAnother && (
+          <button
+            type="button"
+            onClick={onCreateAnother}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer ml-auto"
+          >
+            <PlusCircle className="size-3.5" /> Create Another Resume
+          </button>
+        )}
+      </div>
+
       {/* Live Resume View */}
-      <div className="mx-auto mt-9 max-w-[840px]">
+      <div className="mx-auto mt-7 max-w-[840px]">
         <div className="mb-2 flex items-center justify-between text-xs text-slate-400 print:hidden px-2">
           <span>ATS Document Preview (Standard Letter / A4)</span>
           <span className="flex items-center gap-1 text-slate-500 font-medium">

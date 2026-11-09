@@ -3,7 +3,7 @@ import { Check, Sparkles, CheckCircle2 } from "lucide-react";
 
 export const LoginVisual: React.FC = () => {
   return (
-    <div className="sticky top-0 hidden lg:block h-screen min-h-[600px] overflow-hidden border-l border-slate-200">
+    <div className="hidden lg:block h-full overflow-hidden border-l border-slate-200 select-none">
       <div
         className="relative isolate h-full w-full overflow-hidden flex items-center justify-center"
         style={{
@@ -25,7 +25,7 @@ export const LoginVisual: React.FC = () => {
         />
 
         {/* Central Graphic Container */}
-        <div className="relative shrink-0 w-[580px] h-[680px]">
+        <div className="relative shrink-0 w-[580px] h-[680px] scale-[0.85] xl:scale-100 origin-center">
           {/* Ambient Glow */}
           <div
             className="absolute size-[400px] rounded-full bg-[#60A5FA] opacity-[0.14] blur-3xl pointer-events-none"

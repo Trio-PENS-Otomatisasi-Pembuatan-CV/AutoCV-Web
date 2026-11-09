@@ -13,10 +13,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-      <div className="grid grid-cols-1 lg:grid-cols-2 min-h-screen">
+    <div className="h-screen overflow-hidden bg-slate-50 flex flex-col font-sans">
+      <div className="grid grid-cols-1 lg:grid-cols-2 h-full w-full">
         {/* Left: Login Form Panel */}
-        <div className="flex items-center justify-center bg-white px-6 sm:px-12 py-16">
+        <div className="flex items-center justify-center bg-white px-6 sm:px-12 py-8 overflow-y-auto h-full">
           <LoginForm onSuccess={handleLoginSuccess} />
         </div>
 
