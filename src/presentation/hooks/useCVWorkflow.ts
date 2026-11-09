@@ -207,7 +207,7 @@ export function useCVWorkflow() {
 
         setJobId(res.jobId);
         startPolling(res.jobId);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Submit error:", err);
         // Fallback simulation in case API is temporarily unavailable
         const mockJobId = "ACV-" + Math.floor(1000 + Math.random() * 9000);

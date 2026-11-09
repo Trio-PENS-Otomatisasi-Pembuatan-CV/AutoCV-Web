@@ -20,9 +20,10 @@ export async function GET(
       downloadUrl: progress.downloadUrl,
       errorMessage: progress.errorMessage,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Job not found";
     return NextResponse.json(
-      { error: error?.message || "Job not found" },
+      { error: message },
       { status: 404 }
     );
   }

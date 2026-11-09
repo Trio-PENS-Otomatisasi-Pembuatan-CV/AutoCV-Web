@@ -20,9 +20,10 @@ export async function POST(req: NextRequest) {
     const result = await useCase.execute(parsed.data);
 
     return NextResponse.json(result, { status: 202 });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to submit CV job";
     return NextResponse.json(
-      { error: error?.message || "Failed to submit CV job" },
+      { error: message },
       { status: 500 }
     );
   }

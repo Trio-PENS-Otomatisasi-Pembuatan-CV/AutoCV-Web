@@ -20,21 +20,25 @@ export function useAuthSession(options?: UseAuthSessionOptions) {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const userStr = localStorage.getItem("autocv_user");
-    if (userStr) {
-      try {
-        const parsed: UserSession = JSON.parse(userStr);
-        setCurrentUser(parsed);
-        setIsAuthenticated(true);
-        options?.onStepChange?.("input");
-        return;
-      } catch {
-        // Fall through to unauthenticated
+    const timer = setTimeout(() => {
+      const userStr = localStorage.getItem("autocv_user");
+      if (userStr) {
+        try {
+          const parsed: UserSession = JSON.parse(userStr);
+          setCurrentUser(parsed);
+          setIsAuthenticated(true);
+          options?.onStepChange?.("input");
+          return;
+        } catch {
+          // Fall through to unauthenticated
+        }
       }
-    }
 
-    setIsAuthenticated(false);
-    options?.onStepChange?.("login");
+      setIsAuthenticated(false);
+      options?.onStepChange?.("login");
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const login = useCallback(

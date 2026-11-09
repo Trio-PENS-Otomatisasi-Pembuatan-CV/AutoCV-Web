@@ -1,26 +1,181 @@
-import { IUiPathGateway, JobProgress, JobSubmission } from "@/core/interfaces/IUiPathGateway";
-import { GenerateCVRequestDTO } from "@/application/dto/GenerateCVRequestDTO";
+import type { IUiPathGateway, JobProgress, JobSubmission } from "@/core/interfaces/IUiPathGateway";
+import type { GenerateCVRequestDTO } from "@/application/dto/GenerateCVRequestDTO";
+import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
+import { orchestratorAuth } from "./OrchestratorAuthClient";
+import { createJob, getJob, updateJob } from "@/infrastructure/storage/JobStore";
+
+interface OrchestratorStartJobsResponse {
+  value?: Array<{
+    Id: number;
+    Key: string;
+    State: string;
+  }>;
+}
 
 export class LiveUiPathGateway implements IUiPathGateway {
-  // ponytail: Real implementation should POST to UiPath Cloud Orchestrator endpoints using `apiClient` with credentials from env
-  async submitJob(_request: GenerateCVRequestDTO): Promise<JobSubmission> {
-    void _request;
-    throw new Error("LiveUiPathGateway: not yet implemented");
+  async submitJob(request: GenerateCVRequestDTO): Promise<JobSubmission> {
+    const jobId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2);
+
+    // Initialize local JobStore entry
+    createJob(jobId, request, JobStatus.PENDING);
+
+    const token = await orchestratorAuth.getAccessToken();
+    const orchestratorUrl = process.env.UIPATH_ORCHESTRATOR_URL?.replace(/\/+$/, "");
+    const releaseKey = process.env.UIPATH_PROCESS_KEY_JOB1;
+    const folderId = process.env.UIPATH_FOLDER_ID;
+    const tenantName = process.env.UIPATH_TENANT_NAME;
+
+    const inputArgs = JSON.stringify({
+      jobId,
+      linkedinUrl: request.linkedinUrl || request.linkedInUrl || "",
+      githubUrl: request.githubUrl,
+      recipientEmail: request.recipientEmail || request.email || "",
+      targetRole: request.targetRole || "General Tech Professional",
+    });
+
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+    if (tenantName) headers["X-UIPATH-TenantName"] = tenantName;
+    if (folderId) headers["X-UIPATH-OrganizationUnitId"] = folderId;
+
+    const response = await fetch(
+      `${orchestratorUrl}/odata/Jobs/UiPath.Server.Configuration.OData.StartJobs`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          startInfo: {
+            ReleaseKey: releaseKey,
+            Strategy: "Specific",
+            JobsCount: 1,
+            InputArguments: inputArgs,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.text();
+      updateJob(jobId, {
+        status: JobStatus.FAILED,
+        errorMessage: `Failed to trigger Job 1 in Orchestrator: ${err}`,
+      });
+      throw new Error(`Orchestrator StartJobs (Job 1) failed (HTTP ${response.status}): ${err}`);
+    }
+
+    const data = (await response.json().catch(() => ({}))) as OrchestratorStartJobsResponse;
+    const orchJobId = data.value?.[0]?.Key || data.value?.[0]?.Id?.toString();
+
+    updateJob(jobId, {
+      status: JobStatus.SCRAPING_LINKEDIN,
+      progress: 15,
+      orchestratorJobId: orchJobId,
+    });
+
+    return { jobId };
   }
 
-  async getJobProgress(_jobId: string): Promise<JobProgress> {
-    void _jobId;
-    throw new Error("LiveUiPathGateway: not yet implemented");
+  async getJobProgress(jobId: string): Promise<JobProgress> {
+    const job = getJob(jobId);
+    if (!job) {
+      throw new Error(`Job '${jobId}' not found`);
+    }
+
+    return {
+      jobId: job.jobId,
+      status: job.status,
+      progress: job.progress,
+      draftData: job.draftData,
+      downloadUrl: job.downloadUrl,
+      errorMessage: job.errorMessage,
+    };
   }
 
-  async approveResume(_jobId: string, _curatedData?: unknown): Promise<void> {
-    void _jobId;
-    void _curatedData;
-    throw new Error("LiveUiPathGateway: not yet implemented");
+  async approveResume(jobId: string, curatedData?: unknown): Promise<void> {
+    const job = getJob(jobId);
+    if (!job) {
+      throw new Error(`Job '${jobId}' not found`);
+    }
+
+    // Set optimistic state
+    updateJob(jobId, {
+      status: JobStatus.GENERATING_PDF,
+      progress: 90,
+    });
+
+    const token = await orchestratorAuth.getAccessToken();
+    const orchestratorUrl = process.env.UIPATH_ORCHESTRATOR_URL?.replace(/\/+$/, "");
+    const releaseKey = process.env.UIPATH_PROCESS_KEY_JOB2;
+    const folderId = process.env.UIPATH_FOLDER_ID;
+    const tenantName = process.env.UIPATH_TENANT_NAME;
+
+    const inputArgs = JSON.stringify({
+      jobId,
+      curatedData: curatedData || job.draftData,
+      recipientEmail: job.request?.recipientEmail || job.request?.email || "",
+    });
+
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+    if (tenantName) headers["X-UIPATH-TenantName"] = tenantName;
+    if (folderId) headers["X-UIPATH-OrganizationUnitId"] = folderId;
+
+    const response = await fetch(
+      `${orchestratorUrl}/odata/Jobs/UiPath.Server.Configuration.OData.StartJobs`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          startInfo: {
+            ReleaseKey: releaseKey,
+            Strategy: "Specific",
+            JobsCount: 1,
+            InputArguments: inputArgs,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.text();
+      updateJob(jobId, {
+        status: JobStatus.FAILED,
+        errorMessage: `Failed to trigger Job 2 in Orchestrator: ${err}`,
+      });
+      throw new Error(`Orchestrator StartJobs (Job 2) failed (HTTP ${response.status}): ${err}`);
+    }
   }
 
-  async downloadCv(_jobId: string): Promise<Blob> {
-    void _jobId;
-    throw new Error("LiveUiPathGateway: not yet implemented");
+  async downloadCv(jobId: string): Promise<Blob> {
+    const job = getJob(jobId);
+    if (!job) {
+      throw new Error(`Job '${jobId}' not found`);
+    }
+
+    if (job.pdfBase64) {
+      const binary = atob(job.pdfBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new Blob([bytes], { type: "application/pdf" });
+    }
+
+    if (job.downloadUrl) {
+      const res = await fetch(job.downloadUrl);
+      if (!res.ok) {
+        throw new Error(`Failed to fetch PDF from URL: ${job.downloadUrl}`);
+      }
+      return res.blob();
+    }
+
+    throw new Error("PDF not ready or not found");
   }
 }
