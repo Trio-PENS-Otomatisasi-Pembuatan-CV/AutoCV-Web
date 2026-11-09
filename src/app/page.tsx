@@ -2,6 +2,8 @@
 
 import React, { useEffect } from "react";
 import { Navbar } from "@/presentation/components/organisms/Navbar";
+import { LoginForm } from "@/presentation/components/organisms/LoginForm";
+import { LoginVisual } from "@/presentation/components/organisms/LoginVisual";
 import { InputForm } from "@/presentation/components/organisms/InputForm";
 import { ProgressStepper } from "@/presentation/components/organisms/ProgressStepper";
 import { CurationDashboard } from "@/presentation/components/organisms/CurationDashboard";
@@ -23,7 +25,6 @@ export default function HomePage() {
     formErrors,
     resumeData,
     setResumeData,
-    hasCurated,
     handleFormFieldChange,
     handleUseSample,
     handleSubmitJob,
@@ -47,66 +48,78 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans pb-28">
-      {/* Top Navigation */}
-      <Navbar />
+      {/* If current step is Login, render full login layout */}
+      {currentStep === "login" ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 min-h-screen">
+          <div className="flex items-center justify-center bg-white px-6 sm:px-12 py-16">
+            <LoginForm onSuccess={() => setCurrentStep("input")} />
+          </div>
+          <LoginVisual />
+        </div>
+      ) : (
+        <>
+          {/* Top Navigation */}
+          <Navbar />
 
-      {/* Main Container */}
-      <main className="flex-1 w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12">
-        {/* Step 1: Input & Ingestion */}
-        {currentStep === "input" && (
-          <div className="mx-auto max-w-[840px] transition-all duration-300">
-            <InputForm
-              formData={formData}
-              onChange={handleFormFieldChange}
-              onUseSample={handleUseSample}
-              onSubmit={handleSubmitJob}
-              isLoading={isSubmitting}
-              errors={formErrors}
-            />
+          {/* Main Container */}
+          <main className="flex-1 w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12">
+            {/* Step 1: Input & Ingestion */}
+            {currentStep === "input" && (
+              <div className="mx-auto max-w-[840px] transition-all duration-300">
+                <InputForm
+                  formData={formData}
+                  onChange={handleFormFieldChange}
+                  onUseSample={handleUseSample}
+                  onSubmit={handleSubmitJob}
+                  isLoading={isSubmitting}
+                  errors={formErrors}
+                />
 
-            {(isSubmitting || jobId || progressPercent > 0) && (
-              <ProgressStepper
-                jobId={jobId}
-                status={status}
-                progressPercent={progressPercent}
-                onContinueToCuration={() => setCurrentStep("curation")}
-              />
+                {(isSubmitting || jobId || progressPercent > 0) && (
+                  <ProgressStepper
+                    jobId={jobId}
+                    status={status}
+                    progressPercent={progressPercent}
+                    onContinueToCuration={() => setCurrentStep("curation")}
+                  />
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        {/* Step 2: Curation Studio (#HumanInTheLead) */}
-        {currentStep === "curation" && (
-          <div className="w-full transition-all duration-300">
-            <CurationDashboard
-              resume={curatedResume}
-              onUpdateSummary={updateSummary}
-              onToggleProject={toggleProject}
-              onUpdateExperienceBullets={updateExperienceBullets}
-              onRegenerateSummary={regenerateSummaryWithAI}
-              onRerunSynthesis={() => {
-                setResume(resumeData);
-              }}
-              onApprove={() => {
-                setResumeData(curatedResume);
-                handleApproveCuration(curatedResume);
-              }}
-              isApproving={isApproving}
-            />
-          </div>
-        )}
+            {/* Step 2: Curation Studio (#HumanInTheLead) */}
+            {currentStep === "curation" && (
+              <div className="w-full transition-all duration-300">
+                <CurationDashboard
+                  resume={curatedResume}
+                  onUpdateSummary={updateSummary}
+                  onToggleProject={toggleProject}
+                  onUpdateExperienceBullets={updateExperienceBullets}
+                  onRegenerateSummary={regenerateSummaryWithAI}
+                  onRerunSynthesis={() => {
+                    setResume(resumeData);
+                  }}
+                  onApprove={() => {
+                    setResumeData(curatedResume);
+                    handleApproveCuration(curatedResume);
+                  }}
+                  isApproving={isApproving}
+                />
+              </div>
+            )}
 
-        {/* Step 3: Delivery & Export */}
-        {currentStep === "delivery" && (
-          <div className="w-full transition-all duration-300">
-            <DeliveryView
-              resume={curatedResume}
-              jobId={jobId}
-              onDownloadPdf={handleDownloadPdf}
-            />
-          </div>
-        )}
-      </main>
+            {/* Step 3: Delivery & Export */}
+            {currentStep === "delivery" && (
+              <div className="w-full transition-all duration-300">
+                <DeliveryView
+                  resume={curatedResume}
+                  jobId={jobId}
+                  onDownloadPdf={handleDownloadPdf}
+                />
+              </div>
+            )}
+          </main>
+        </>
+      )}
 
       {/* Bottom Step Switcher Floating Bar */}
       <StepSwitcherBar
