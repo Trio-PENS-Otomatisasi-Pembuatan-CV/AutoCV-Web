@@ -6,9 +6,9 @@ import { Button } from "../atoms/Button";
 import {
   Sparkles,
   CheckCircle2,
-  RotateCcw,
   ShieldCheck,
   ArrowLeft,
+  Wrench,
 } from "lucide-react";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 
@@ -17,7 +17,9 @@ export interface CurationDashboardProps {
   onUpdateSummary: (summary: string) => void;
   onToggleProject: (projectId: string) => void;
   onUpdateExperienceBullets: (expId: string, bullets: string[]) => void;
+  onUpdateSkillCategoryItems?: (categoryIndex: number, itemsString: string) => void;
   onRegenerateSummary: () => void;
+  onRequestAIRewrite?: () => void;
   onRerunSynthesis: () => void;
   onApprove: () => void;
   onBackToInput?: () => void;
@@ -29,13 +31,16 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
   onUpdateSummary,
   onToggleProject,
   onUpdateExperienceBullets,
+  onUpdateSkillCategoryItems,
   onRegenerateSummary,
+  onRequestAIRewrite,
   onRerunSynthesis,
   onApprove,
   onBackToInput,
   isApproving = false,
 }) => {
   const selectedCount = resume.projects.filter((p) => p.isSelected !== false).length;
+  const handleRewrite = onRequestAIRewrite || onRegenerateSummary || onRerunSynthesis;
 
   return (
     <div className="w-full">
@@ -64,7 +69,7 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
           </h1>
           <p className="mt-1.5 text-xs sm:text-sm text-slate-600">
             <span className="font-semibold text-blue-600">#HumanInTheLead:</span> You
-            control which repositories are featured and refine bullet points before
+            control which repositories are featured, refine bullet points, and curate skills before
             final compilation.
           </p>
         </div>
@@ -95,10 +100,10 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={onRegenerateSummary}
+                onClick={handleRewrite}
                 icon={<Sparkles className="size-3 text-blue-600" />}
               >
-                Regenerate with AI
+                Request AI Rewrite
               </Button>
             </div>
             <textarea
@@ -118,17 +123,17 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
                   Select Featured GitHub Repositories
                 </h3>
                 <p className="text-xs text-slate-500">
-                  Choose 2–3 best repositories ({selectedCount} selected)
+                  Choose 2–4 best repositories ({selectedCount} selected)
                 </p>
               </div>
               <span
                 className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-                  selectedCount >= 2 && selectedCount <= 3
+                  selectedCount >= 2 && selectedCount <= 4
                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                     : "bg-amber-50 text-amber-700 border border-amber-200"
                 }`}
               >
-                {selectedCount} of 3
+                {selectedCount} of {resume.projects.length} selected
               </span>
             </div>
 
@@ -148,7 +153,7 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
           <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
             <div className="mb-4">
               <h3 className="text-sm font-bold text-slate-900">
-                Work Experience &amp; Skills
+                Work Experience Highlights
               </h3>
               <p className="text-xs text-slate-500">
                 Refine STAR bullet points for maximum impact
@@ -162,6 +167,50 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
                   experience={exp}
                   onUpdateBullets={onUpdateExperienceBullets}
                 />
+              ))}
+            </div>
+          </div>
+
+          {/* Section 4: Technical Skills Editor */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <Wrench className="size-4 text-blue-600" />
+                  Technical Skills &amp; Competencies
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Edit comma-separated skill keywords per category
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {resume.skills.map((category, idx) => (
+                <div
+                  key={category.category || idx}
+                  className="rounded-xl border border-slate-100 bg-slate-50/60 p-3.5 transition-colors focus-within:border-blue-300 focus-within:bg-white"
+                >
+                  <div className="mb-1.5 flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">
+                      {category.category}
+                    </span>
+                    <span className="text-[11px] font-medium text-slate-400">
+                      {category.items.length} skills
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={category.items.join(", ")}
+                    onChange={(e) => {
+                      if (onUpdateSkillCategoryItems) {
+                        onUpdateSkillCategoryItems(idx, e.target.value);
+                      }
+                    }}
+                    placeholder="Enter skills separated by commas (e.g. TypeScript, React, Go)"
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10"
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -183,10 +232,10 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
               <Button
                 variant="secondary"
                 size="md"
-                onClick={onRerunSynthesis}
-                icon={<RotateCcw className="size-4" />}
+                onClick={handleRewrite}
+                icon={<Sparkles className="size-4 text-blue-600" />}
               >
-                Re-run AI
+                Request AI Rewrite
               </Button>
             </div>
 

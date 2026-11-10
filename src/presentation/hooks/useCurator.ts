@@ -37,7 +37,31 @@ export function useCurator(initialResume: ResumePayload) {
     []
   );
 
-  const regenerateSummaryWithAI = useCallback(() => {
+  const updateSkillCategoryItems = useCallback(
+    (categoryIndex: number, itemsString: string) => {
+      const parsedItems = itemsString
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      setResume((prev) => {
+        const nextSkills = [...prev.skills];
+        if (nextSkills[categoryIndex]) {
+          nextSkills[categoryIndex] = {
+            ...nextSkills[categoryIndex],
+            items: parsedItems,
+          };
+        }
+        return {
+          ...prev,
+          skills: nextSkills,
+        };
+      });
+    },
+    []
+  );
+
+  const requestAIRewrite = useCallback(() => {
     const aiSummaries = [
       "Dynamic Senior Fullstack Engineer with 5+ years driving high-concurrency cloud architectures and automation systems. Proven track record reducing infrastructure latency by 42% and architecting resilient microservices.",
       "Results-oriented Software Engineer specializing in Go, TypeScript, and modern cloud ecosystems. Experienced in event-driven systems handling 10k+ rpm and accelerating CI/CD deployment pipelines by 90%.",
@@ -53,6 +77,8 @@ export function useCurator(initialResume: ResumePayload) {
     updateSummary,
     toggleProject,
     updateExperienceBullets,
-    regenerateSummaryWithAI,
+    updateSkillCategoryItems,
+    regenerateSummaryWithAI: requestAIRewrite,
+    requestAIRewrite,
   };
 }

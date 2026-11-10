@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { ResumeDocument } from "./ResumeDocument";
+import { LivePdfPreviewer } from "./LivePdfPreviewer";
 import { Button } from "../atoms/Button";
 import {
   Download,
@@ -12,12 +13,14 @@ import {
   CheckCircle,
   ArrowLeft,
   PlusCircle,
+  Eye,
 } from "lucide-react";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 
 export interface DeliveryViewProps {
   resume: ResumePayload;
   jobId: string | null;
+  pdfUrl?: string | null;
   onDownloadPdf: () => void;
   onDownloadWord?: () => void;
   onResendEmail?: () => void;
@@ -29,6 +32,7 @@ export interface DeliveryViewProps {
 export const DeliveryView: React.FC<DeliveryViewProps> = ({
   resume,
   jobId,
+  pdfUrl,
   onDownloadPdf,
   onDownloadWord,
   onResendEmail,
@@ -38,6 +42,9 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
 }) => {
   const [copied, setCopied] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [viewMode, setViewMode] = useState<"layout" | "pdf">("layout");
+
+  const effectivePdfUrl = pdfUrl || (jobId ? `/api/cv/jobs/${jobId}/download` : null);
 
   const handleCopyLink = () => {
     if (typeof window !== "undefined") {
@@ -67,14 +74,14 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
       <section className="text-center print:hidden">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200/60 ring-inset">
           <CheckCircle className="size-3.5 text-emerald-600" />
-          ATS Verified &amp; Human Approved
+          ATS Verified &amp; #HumanInTheLead Approved
         </span>
         <h1 className="mx-auto mt-4 max-w-[680px] text-3xl sm:text-[36px] font-bold tracking-tight text-slate-900">
           Your ATS-Compliant Resume is Ready
         </h1>
         <p className="mx-auto mt-3 max-w-[620px] text-sm text-slate-600 leading-relaxed">
           Synthesized from your LinkedIn profile and selected GitHub achievements.
-          Strictly formatted to pass modern Applicant Tracking Systems.
+          Strictly formatted into single-column layout to pass modern Applicant Tracking Systems.
         </p>
       </section>
 
@@ -106,10 +113,10 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-            Integration
+            Delivery
           </p>
           <p className="mt-1 text-lg font-bold text-blue-600">UiPath RPA</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">Dossier Engine</p>
+          <p className="mt-0.5 text-[11px] text-slate-500">Word &amp; PDF Export</p>
         </div>
       </div>
 
@@ -132,7 +139,7 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
             onClick={handlePrint}
             icon={<Printer className="size-4" />}
           >
-            Print / Save as PDF
+            Print / Save
           </Button>
 
           {onDownloadWord && (
@@ -145,6 +152,32 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
               Word (.docx)
             </Button>
           )}
+
+          {/* View Mode Switcher */}
+          <div className="ml-2 inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("layout")}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                viewMode === "layout"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              Document View
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("pdf")}
+              className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                viewMode === "pdf"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <Eye className="size-3" /> Live PDF Previewer
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -203,16 +236,26 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
         )}
       </div>
 
-      {/* Live Resume View */}
+      {/* Main Content Area: Document View OR Live PDF Previewer */}
       <div className="mx-auto mt-7 max-w-[840px]">
-        <div className="mb-2 flex items-center justify-between text-xs text-slate-400 print:hidden px-2">
-          <span>ATS Document Preview (Standard Letter / A4)</span>
-          <span className="flex items-center gap-1 text-slate-500 font-medium">
-            <ShieldCheck className="size-3.5 text-emerald-600" /> ATS Parsable
-          </span>
-        </div>
-
-        <ResumeDocument resume={resume} />
+        {viewMode === "pdf" ? (
+          <LivePdfPreviewer
+            pdfUrl={effectivePdfUrl}
+            candidateName={resume.profile.fullName}
+            onDownloadPdf={onDownloadPdf}
+            isDownloading={isDownloading}
+          />
+        ) : (
+          <div>
+            <div className="mb-2 flex items-center justify-between text-xs text-slate-400 print:hidden px-2">
+              <span>ATS Document Preview (Standard Letter / A4)</span>
+              <span className="flex items-center gap-1 text-slate-500 font-medium">
+                <ShieldCheck className="size-3.5 text-emerald-600" /> ATS Parsable
+              </span>
+            </div>
+            <ResumeDocument resume={resume} />
+          </div>
+        )}
       </div>
     </div>
   );
