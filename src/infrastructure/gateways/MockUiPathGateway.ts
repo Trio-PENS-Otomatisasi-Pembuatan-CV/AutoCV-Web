@@ -1,19 +1,8 @@
-import { IUiPathGateway, JobProgress, JobSubmission } from "@/core/interfaces/IUiPathGateway";
-import { GenerateCVRequestDTO, JobStatus } from "@/application/dto/GenerateCVRequestDTO";
+import type { IUiPathGateway, JobProgress, JobSubmission } from "@/core/interfaces/IUiPathGateway";
+import type { GenerateCVRequestDTO } from "@/application/dto/GenerateCVRequestDTO";
+import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
-
-// in-memory store
-const jobs = new Map<string, MockJob>();
-
-type MockJob = {
-  jobId: string;
-  status: JobStatus;
-  progress: number;
-  timerId?: NodeJS.Timeout;
-  draftData?: ResumePayload;
-  downloadUrl?: string;
-  errorMessage?: string;
-};
+import { createJob, getJob, updateJob } from "@/infrastructure/storage/JobStore";
 
 function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
   const linkedinUrl = from.linkedinUrl || from.linkedInUrl || "";
@@ -39,7 +28,7 @@ function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
         endDate: "Present",
         bulletPoints: [
           "Merancang arsitektur microservices Node.js 500k transaksi harian.",
-          "Optimasi query PostgreSQL, latensi turun dari 450ms ke 85ms."
+          "Optimasi query PostgreSQL, latensi turun dari 450ms ke 85ms.",
         ],
       },
     ],
@@ -51,7 +40,8 @@ function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
         stars: 99,
         language: "TypeScript",
         techStack: ["Node.js", "Redis", "Docker", "Jest"],
-        starSummary: "Sistem task scheduling terdistribusi dengan Redis lock untuk race condition mitigation.",
+        starSummary:
+          "Sistem task scheduling terdistribusi dengan Redis lock untuk race condition mitigation.",
         isSelected: true,
       },
       {
@@ -86,95 +76,129 @@ function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
         institution: "Politeknik Elektronika Negeri Surabaya",
         degree: "D4 Teknik Informatika",
         graduationYear: "2026",
-        gpa: "3.85 / 4.00"
-      }
+        gpa: "3.85 / 4.00",
+      },
     ],
   };
 }
 
 function getNextStatus(current: JobStatus): JobStatus | null {
   switch (current) {
-    case JobStatus.PENDING: return JobStatus.SCRAPING_LINKEDIN;
-    case JobStatus.SCRAPING_LINKEDIN: return JobStatus.FETCHING_GITHUB;
-    case JobStatus.FETCHING_GITHUB: return JobStatus.AI_SYNTHESIZING;
-    case JobStatus.AI_SYNTHESIZING: return JobStatus.AWAITING_CURATION;
-    case JobStatus.AWAITING_CURATION: return JobStatus.GENERATING_PDF;
-    case JobStatus.GENERATING_PDF: return JobStatus.DELIVERING_EMAIL;
-    case JobStatus.DELIVERING_EMAIL: return JobStatus.COMPLETED;
-    default: return null;
+    case JobStatus.PENDING:
+      return JobStatus.SCRAPING_LINKEDIN;
+    case JobStatus.SCRAPING_LINKEDIN:
+      return JobStatus.FETCHING_GITHUB;
+    case JobStatus.FETCHING_GITHUB:
+      return JobStatus.AI_SYNTHESIZING;
+    case JobStatus.AI_SYNTHESIZING:
+      return JobStatus.AWAITING_CURATION;
+    case JobStatus.AWAITING_CURATION:
+      return JobStatus.GENERATING_PDF;
+    case JobStatus.GENERATING_PDF:
+      return JobStatus.DELIVERING_EMAIL;
+    case JobStatus.DELIVERING_EMAIL:
+      return JobStatus.COMPLETED;
+    default:
+      return null;
   }
 }
 
 function progressForStatus(status: JobStatus): number {
   switch (status) {
-    case JobStatus.PENDING: return 0;
-    case JobStatus.SCRAPING_LINKEDIN: return 20;
-    case JobStatus.FETCHING_GITHUB: return 45;
-    case JobStatus.AI_SYNTHESIZING: return 70;
-    case JobStatus.AWAITING_CURATION: return 90;
-    case JobStatus.GENERATING_PDF: return 95;
-    case JobStatus.DELIVERING_EMAIL: return 98;
-    case JobStatus.COMPLETED: return 100;
-    case JobStatus.FAILED: return 100;
-    default: return 0;
+    case JobStatus.PENDING:
+      return 0;
+    case JobStatus.SCRAPING_LINKEDIN:
+      return 20;
+    case JobStatus.FETCHING_GITHUB:
+      return 45;
+    case JobStatus.AI_SYNTHESIZING:
+      return 70;
+    case JobStatus.AWAITING_CURATION:
+      return 90;
+    case JobStatus.GENERATING_PDF:
+      return 95;
+    case JobStatus.DELIVERING_EMAIL:
+      return 98;
+    case JobStatus.COMPLETED:
+      return 100;
+    case JobStatus.FAILED:
+      return 100;
+    default:
+      return 0;
   }
 }
 
 function statusDelay(status: JobStatus): number {
   switch (status) {
-    case JobStatus.PENDING: return 500;
-    case JobStatus.SCRAPING_LINKEDIN: return 2000;
-    case JobStatus.FETCHING_GITHUB: return 1500;
-    case JobStatus.AI_SYNTHESIZING: return 3000;
-    case JobStatus.AWAITING_CURATION: return 0;    // manual trigger
-    case JobStatus.GENERATING_PDF: return 1500;
-    case JobStatus.DELIVERING_EMAIL: return 1000;
-    default: return 0;
+    case JobStatus.PENDING:
+      return 500;
+    case JobStatus.SCRAPING_LINKEDIN:
+      return 2000;
+    case JobStatus.FETCHING_GITHUB:
+      return 1500;
+    case JobStatus.AI_SYNTHESIZING:
+      return 3000;
+    case JobStatus.AWAITING_CURATION:
+      return 0;
+    case JobStatus.GENERATING_PDF:
+      return 1500;
+    case JobStatus.DELIVERING_EMAIL:
+      return 1000;
+    default:
+      return 0;
   }
 }
 
 export class MockUiPathGateway implements IUiPathGateway {
   async submitJob(request: GenerateCVRequestDTO): Promise<JobSubmission> {
-    const jobId = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
-    const job: MockJob = {
-      jobId,
-      status: JobStatus.PENDING,
-      progress: progressForStatus(JobStatus.PENDING),
-    };
-    jobs.set(jobId, job);
+    const jobId =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).slice(2);
+
+    createJob(jobId, request, JobStatus.PENDING);
+    updateJob(jobId, { progress: progressForStatus(JobStatus.PENDING) });
+
     this.advanceJob(jobId, request);
     return { jobId };
   }
 
   private advanceJob(jobId: string, request: GenerateCVRequestDTO) {
-    const job = jobs.get(jobId);
+    const job = getJob(jobId);
     if (!job) return;
     const status = job.status;
     const delay = statusDelay(status);
+
     if (status === JobStatus.AWAITING_CURATION) {
-      // Wait for approveResume
-      job.draftData = genMockResume(request);
-      job.progress = progressForStatus(status);
-      jobs.set(jobId, job);
+      updateJob(jobId, {
+        draftData: genMockResume(request),
+        progress: progressForStatus(status),
+      });
       return;
     }
-    job.timerId = setTimeout(() => {
+
+    setTimeout(() => {
       const next = getNextStatus(status);
       if (!next) return;
-      job.status = next;
-      job.progress = progressForStatus(next);
+
+      const updates: Parameters<typeof updateJob>[1] = {
+        status: next,
+        progress: progressForStatus(next),
+      };
+
       if (next === JobStatus.AWAITING_CURATION) {
-        job.draftData = genMockResume(request);
+        updates.draftData = genMockResume(request);
       } else if (next === JobStatus.COMPLETED) {
-        job.downloadUrl = `/mock/${jobId}/download.pdf`;
+        updates.downloadUrl = `/api/cv/jobs/${jobId}/download`;
       }
-      jobs.set(jobId, job);
+
+      updateJob(jobId, updates);
       this.advanceJob(jobId, request);
     }, delay);
   }
 
   async getJobProgress(jobId: string): Promise<JobProgress> {
-    const job = jobs.get(jobId);
+    const job = getJob(jobId);
     if (!job) throw new Error("Job not found");
     return {
       jobId,
@@ -187,25 +211,35 @@ export class MockUiPathGateway implements IUiPathGateway {
   }
 
   async approveResume(jobId: string, curatedData?: unknown): Promise<void> {
-    const job = jobs.get(jobId);
+    const job = getJob(jobId);
     if (!job) throw new Error("Job not found");
     if (job.status !== JobStatus.AWAITING_CURATION) throw new Error("Job is not awaiting curation");
-    if (curatedData && typeof curatedData === "object") {
-      job.draftData = { ...job.draftData, ...(curatedData as Partial<ResumePayload>) } as ResumePayload;
-    }
-    job.status = JobStatus.GENERATING_PDF;
-    job.progress = progressForStatus(JobStatus.GENERATING_PDF);
-    jobs.set(jobId, job);
-    // Simulate the rest
+
+    const mergedDraft =
+      curatedData && typeof curatedData === "object"
+        ? ({ ...job.draftData, ...(curatedData as Partial<ResumePayload>) } as ResumePayload)
+        : job.draftData;
+
+    updateJob(jobId, {
+      draftData: mergedDraft,
+      status: JobStatus.GENERATING_PDF,
+      progress: progressForStatus(JobStatus.GENERATING_PDF),
+    });
+
     setTimeout(() => {
-      job.status = JobStatus.DELIVERING_EMAIL;
-      job.progress = progressForStatus(JobStatus.DELIVERING_EMAIL);
-      jobs.set(jobId, job);
+      updateJob(jobId, {
+        status: JobStatus.DELIVERING_EMAIL,
+        progress: progressForStatus(JobStatus.DELIVERING_EMAIL),
+      });
+
       setTimeout(() => {
-        job.status = JobStatus.COMPLETED;
-        job.progress = 100;
-        job.downloadUrl = `/mock/${jobId}/download.pdf`;
-        jobs.set(jobId, job);
+        updateJob(jobId, {
+          status: JobStatus.COMPLETED,
+          progress: 100,
+          downloadUrl: `/api/cv/jobs/${jobId}/download`,
+          emailSent: true,
+          emailSentAt: new Date().toISOString(),
+        });
       }, statusDelay(JobStatus.DELIVERING_EMAIL));
     }, statusDelay(JobStatus.GENERATING_PDF));
   }
@@ -233,6 +267,15 @@ export class MockUiPathGateway implements IUiPathGateway {
       // Fallback
     }
 
+    const job = getJob(jobId);
+    if (job?.pdfBase64) {
+      const binary = atob(job.pdfBase64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) {
+        bytes[i] = binary.charCodeAt(i);
+      }
+      return new Blob([bytes], { type: "application/pdf" });
+    }
     const content = "%PDF-1.3\n% mock pdf file: " + jobId + "\n";
     return new Blob([content], { type: "application/pdf" });
   }

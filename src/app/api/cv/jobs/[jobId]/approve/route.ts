@@ -14,9 +14,10 @@ export async function POST(
     await useCase.execute(jobId, body.curatedData);
 
     return NextResponse.json({ success: true, status: "GENERATING_PDF" });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to approve resume";
     return NextResponse.json(
-      { error: error?.message || "Failed to approve resume" },
+      { error: message },
       { status: 500 }
     );
   }
