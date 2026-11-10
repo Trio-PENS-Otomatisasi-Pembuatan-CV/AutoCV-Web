@@ -46,7 +46,9 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
     updateSummary,
     toggleProject,
     updateExperienceBullets,
+    updateSkillCategoryItems,
     regenerateSummaryWithAI,
+    requestAIRewrite,
   } = curator;
 
   return (
@@ -89,7 +91,9 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
               onUpdateSummary={updateSummary}
               onToggleProject={toggleProject}
               onUpdateExperienceBullets={updateExperienceBullets}
+              onUpdateSkillCategoryItems={updateSkillCategoryItems}
               onRegenerateSummary={regenerateSummaryWithAI}
+              onRequestAIRewrite={requestAIRewrite}
               onRerunSynthesis={() => setResume(resumeData)}
               onApprove={() => {
                 setResumeData(curatedResume);

@@ -245,6 +245,28 @@ export class MockUiPathGateway implements IUiPathGateway {
   }
 
   async downloadCv(jobId: string): Promise<Blob> {
+    try {
+      const fs = await import("fs");
+      const path = await import("path");
+      const outputsDir = path.resolve(process.cwd(), "../robot/Data/Outputs");
+      if (fs.existsSync(outputsDir)) {
+        const files = fs.readdirSync(outputsDir).filter((f) => f.endsWith(".pdf"));
+        if (files.length > 0) {
+          files.sort((a, b) => {
+            return (
+              fs.statSync(path.join(outputsDir, b)).mtime.getTime() -
+              fs.statSync(path.join(outputsDir, a)).mtime.getTime()
+            );
+          });
+          const newest = path.join(outputsDir, files[0]);
+          const buffer = fs.readFileSync(newest);
+          return new Blob([buffer], { type: "application/pdf" });
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
     const job = getJob(jobId);
     if (job?.pdfBase64) {
       const binary = atob(job.pdfBase64);
