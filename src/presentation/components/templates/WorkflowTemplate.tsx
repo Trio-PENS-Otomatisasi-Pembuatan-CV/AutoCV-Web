@@ -4,6 +4,8 @@ import { InputForm } from "../organisms/InputForm";
 import { ProgressStepper } from "../organisms/ProgressStepper";
 import { CurationDashboard } from "../organisms/CurationDashboard";
 import { DeliveryView } from "../organisms/DeliveryView";
+import { Button } from "../atoms/Button";
+import { AlertCircle, RefreshCw } from "lucide-react";
 import type { UserSession } from "../../hooks/useAuthSession";
 import type { useCVWorkflow } from "../../hooks/useCVWorkflow";
 import type { useCurator } from "../../hooks/useCurator";
@@ -29,6 +31,7 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
     progressPercent,
     isSubmitting,
     isApproving,
+    submitError,
     formData,
     formErrors,
     resumeData,
@@ -51,6 +54,8 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
     requestAIRewrite,
   } = curator;
 
+  const isFailed = status === "FAILED";
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans pb-16">
       <Navbar
@@ -72,13 +77,42 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
               errors={formErrors}
             />
 
-            {(isSubmitting || jobId || progressPercent > 0) && (
+            {(isSubmitting || jobId || progressPercent > 0) && !isFailed && (
               <ProgressStepper
                 jobId={jobId}
                 status={status}
                 progressPercent={progressPercent}
                 onContinueToCuration={() => setCurrentStep("curation")}
               />
+            )}
+
+            {isFailed && submitError && (
+              <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="mt-0.5 size-5 flex-shrink-0 text-red-600" />
+                  <div className="flex-1">
+                    <h3 className="text-sm font-bold text-red-900">
+                      Job Failed
+                    </h3>
+                    <p className="mt-1 text-sm text-red-700 leading-relaxed">
+                      {submitError}
+                    </p>
+                    <div className="mt-4">
+                      <Button
+                        variant="primary"
+                        size="md"
+                        onClick={() => {
+                          setCurrentStep("input");
+                          workflow.handleSubmitJob({ preventDefault: () => {} } as React.FormEvent);
+                        }}
+                        icon={<RefreshCw className="size-4" />}
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         )}

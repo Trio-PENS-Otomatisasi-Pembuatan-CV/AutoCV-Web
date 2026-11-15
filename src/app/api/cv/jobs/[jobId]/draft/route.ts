@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getJob, updateJob } from "@/infrastructure/storage/JobStore";
 import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
-import type { ResumePayload } from "@/core/entities/ResumePayload";
+import { DraftPayloadSchema, normalizeDraftPayload } from "@/application/dto/DraftPayloadDTO";
 
 export async function POST(
   req: NextRequest,
@@ -18,26 +18,31 @@ export async function POST(
       );
     }
 
-    const body = (await req.json().catch(() => ({}))) as {
-      draftData?: ResumePayload;
-    };
+    const body = await req.json().catch(() => ({}));
+    const rawDraft = body?.draftData ?? body;
 
-    if (!body.draftData) {
+    const parsed = DraftPayloadSchema.safeParse(rawDraft);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Missing required 'draftData' payload" },
+        {
+          error: "Invalid draft payload",
+          details: parsed.error.format(),
+        },
         { status: 400 }
       );
     }
 
+    const normalized = normalizeDraftPayload(parsed.data);
+
     updateJob(jobId, {
       status: JobStatus.AWAITING_CURATION,
       progress: 75,
-      draftData: body.draftData,
+      draftData: normalized,
     });
 
     return NextResponse.json({
       success: true,
-      message: "Draft received and stored",
+      message: "Draft received, normalized, and stored",
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to process draft";

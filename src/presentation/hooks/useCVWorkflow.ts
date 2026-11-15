@@ -99,6 +99,7 @@ export function useCVWorkflow() {
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [isApproving, setIsApproving] = useState<boolean>(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof InputFormData, string>>>({});
   const [hasCurated, setHasCurated] = useState<boolean>(false);
 
@@ -111,6 +112,14 @@ export function useCVWorkflow() {
 
   const [resumeData, setResumeData] = useState<ResumePayload>(DEFAULT_RESUME);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollStartRef = useRef<number>(0);
+  const lastStatusRef = useRef<string>("");
+  const lastStatusChangeRef = useRef<number>(0);
+  const pollErrorCountRef = useRef<number>(0);
+
+  const MAX_POLL_DURATION_MS = 4 * 60 * 1000; // 4 minutes total
+  const MAX_NO_STATUS_CHANGE_MS = 180 * 1000; // 3 minutes no status change
+  const MAX_POLL_ERRORS = 10; // consecutive 404/network errors
 
   const handleFormFieldChange = useCallback(
     (field: keyof InputFormData, value: string) => {
@@ -141,9 +150,38 @@ export function useCVWorkflow() {
   const startPolling = useCallback(
     (id: string) => {
       stopPolling();
+      const now = Date.now();
+      pollStartRef.current = now;
+      lastStatusChangeRef.current = now;
+      lastStatusRef.current = "";
+      pollErrorCountRef.current = 0;
+
       pollIntervalRef.current = setInterval(async () => {
+        const elapsed = Date.now() - pollStartRef.current;
+        const sinceChange = Date.now() - lastStatusChangeRef.current;
+
+        // Timeout: total duration or no status change
+        if (elapsed > MAX_POLL_DURATION_MS || sinceChange > MAX_NO_STATUS_CHANGE_MS) {
+          stopPolling();
+          setIsSubmitting(false);
+          setIsApproving(false);
+          setStatus(JobStatus.FAILED);
+          setSubmitError(
+            "Job timed out: no response from robot within the expected timeframe."
+          );
+          return;
+        }
+
         try {
           const res = await getCVJobStatus(id);
+
+          // Track status changes
+          if (res.status !== lastStatusRef.current) {
+            lastStatusRef.current = res.status;
+            lastStatusChangeRef.current = Date.now();
+          }
+          pollErrorCountRef.current = 0;
+
           setStatus(res.status);
           setProgressPercent(res.progressPercent);
 
@@ -155,19 +193,31 @@ export function useCVWorkflow() {
             stopPolling();
             setIsSubmitting(false);
             setHasCurated(true);
-            // Seamless transition to Curation step
+            setSubmitError(null);
             setCurrentStep("curation");
           } else if (res.status === JobStatus.COMPLETED) {
             stopPolling();
             setIsApproving(false);
+            setSubmitError(null);
             setCurrentStep("delivery");
           } else if (res.status === JobStatus.FAILED) {
             stopPolling();
             setIsSubmitting(false);
             setIsApproving(false);
+            setSubmitError(res.errorMessage || "Job failed during robot execution.");
           }
         } catch (e) {
+          pollErrorCountRef.current += 1;
           console.error("Polling error:", e);
+          if (pollErrorCountRef.current >= MAX_POLL_ERRORS) {
+            stopPolling();
+            setIsSubmitting(false);
+            setIsApproving(false);
+            setStatus(JobStatus.FAILED);
+            setSubmitError(
+              "Lost connection to backend while polling job status. The job may have expired."
+            );
+          }
         }
       }, 1000);
     },
@@ -209,7 +259,18 @@ export function useCVWorkflow() {
         startPolling(res.jobId);
       } catch (err: unknown) {
         console.error("Submit error:", err);
-        // Fallback simulation in case API is temporarily unavailable
+        const isLiveMode = process.env.NEXT_PUBLIC_UIPATH_MODE === "live";
+        if (isLiveMode) {
+          setStatus(JobStatus.FAILED);
+          setIsSubmitting(false);
+          setSubmitError(
+            err instanceof Error
+              ? `Failed to start robot job: ${err.message}`
+              : "Failed to start robot job. Check Orchestrator credentials and process configuration."
+          );
+          return;
+        }
+        // Mock-mode fallback simulation for offline frontend dev
         const mockJobId = "ACV-" + Math.floor(1000 + Math.random() * 9000);
         setJobId(mockJobId);
         setStatus(JobStatus.SCRAPING_LINKEDIN);
@@ -287,6 +348,7 @@ export function useCVWorkflow() {
     progressPercent,
     isSubmitting,
     isApproving,
+    submitError,
     formData,
     formErrors,
     resumeData,
