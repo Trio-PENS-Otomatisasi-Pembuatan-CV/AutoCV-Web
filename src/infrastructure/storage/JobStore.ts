@@ -1,5 +1,6 @@
 import type { JobStatus, GenerateCVRequestDTO } from "@/application/dto/GenerateCVRequestDTO";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
+import { JobStatus as JobStatusEnum } from "@/application/dto/GenerateCVRequestDTO";
 
 export interface JobRecord {
   jobId: string;
@@ -97,11 +98,43 @@ export function deleteJob(jobId: string): boolean {
 const TTL_MS = 60 * 60 * 1000;
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 
+// Jobs stuck in-progress for more than 10 minutes are marked FAILED.
+// AWAITING_CURATION is excluded (legitimate human pause).
+const STALE_TIMEOUT_MS = 10 * 60 * 1000;
+
+const IN_PROGRESS_STATUSES: ReadonlySet<JobStatus> = new Set<JobStatus>([
+  JobStatusEnum.PENDING,
+  JobStatusEnum.SCRAPING_LINKEDIN,
+  JobStatusEnum.FETCHING_GITHUB,
+  JobStatusEnum.AI_SYNTHESIZING,
+  JobStatusEnum.GENERATING_PDF,
+  JobStatusEnum.DELIVERING_EMAIL,
+]);
+
 if (!globalForJobs.__autocv_cleanup_timer) {
   const timer = setInterval(() => {
-    const cutoff = Date.now() - TTL_MS;
+    const now = Date.now();
+    const ttlCutoff = now - TTL_MS;
+    const staleCutoff = now - STALE_TIMEOUT_MS;
+
     for (const [id, job] of jobs.entries()) {
-      if (job.updatedAt < cutoff) {
+      // Mark stale in-progress jobs as FAILED (before TTL delete)
+      if (
+        IN_PROGRESS_STATUSES.has(job.status) &&
+        job.updatedAt < staleCutoff
+      ) {
+        updateJob(id, {
+          status: JobStatusEnum.FAILED,
+          progress: 100,
+          errorMessage: "Job timed out: no progress update received within 10 minutes.",
+          errorStage: job.status,
+          errorDetails: { lastUpdatedAt: new Date(job.updatedAt).toISOString() },
+        });
+        continue;
+      }
+
+      // TTL delete: remove records untouched for 1 hour
+      if (job.updatedAt < ttlCutoff) {
         jobs.delete(id);
       }
     }
