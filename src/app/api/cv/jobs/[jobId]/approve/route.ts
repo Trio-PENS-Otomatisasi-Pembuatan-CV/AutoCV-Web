@@ -16,9 +16,14 @@ export async function POST(
     return NextResponse.json({ success: true, status: "GENERATING_PDF" });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to approve resume";
+    const isStateConflict =
+      message.includes("cannot be approved") ||
+      message.includes("not awaiting curation") ||
+      message.includes("not in AWAITING_CURATION");
+    const isNotFound = message.includes("not found");
     return NextResponse.json(
       { error: message },
-      { status: 500 }
+      { status: isStateConflict ? 409 : isNotFound ? 404 : 500 }
     );
   }
 }

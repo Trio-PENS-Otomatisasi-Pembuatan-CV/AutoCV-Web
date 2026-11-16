@@ -4,6 +4,59 @@ import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 import { createJob, getJob, updateJob } from "@/infrastructure/storage/JobStore";
 
+// Escape a single line for use inside a PDF text-showing string literal.
+function pdfEscape(s: string): string {
+  return s
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
+}
+
+// Build a structurally valid, single-page PDF with a Helvetica text stream.
+// Used as a fallback so the browser does not report the file as "damaged".
+function buildMinimalPdf(title: string, lines: string[]): Blob {
+  // Stream content: title + body lines, each on its own show-text operation.
+  let content = "";
+  content += `BT\n/F2 18 Tf\n72 740 Td\n(${pdfEscape(title)}) Tj\nET\n`;
+  let y = 705;
+  for (const line of lines) {
+    const isSection = /Summary/.test(line);
+    const size = isSection ? 12 : 10;
+    const font = isSection ? "/F2" : "/F1";
+    content += `BT\n${font} ${size} Tf\n72 ${y} Td\n(${pdfEscape(line)}) Tj\nET\n`;
+    y -= 16;
+  }
+  const stream = Buffer.from(content, "latin1");
+
+  const objects: Buffer[] = [
+    Buffer.from("<< /Type /Catalog /Pages 2 0 R >>"),
+    Buffer.from("<< /Type /Pages /Kids [3 0 R] /Count 1 >>"),
+    Buffer.from(
+      "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>"
+    ),
+    Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"),
+    Buffer.from("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>"),
+    Buffer.concat([Buffer.from(`<< /Length ${stream.length} >>\nstream\n`), stream, Buffer.from("\nendstream")]),
+  ];
+
+  let pdf = Buffer.from("%PDF-1.4\n");
+  const offsets: number[] = [];
+  objects.forEach((obj, i) => {
+    offsets.push(pdf.length);
+    pdf = Buffer.concat([pdf, Buffer.from(`${i + 1} 0 obj\n`), obj, Buffer.from("\nendobj\n")]);
+  });
+
+  const xrefPos = pdf.length;
+  let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const off of offsets) {
+    xref += `${off.toString().padStart(10, "0")} 00000 n \n`;
+  }
+  xref += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefPos}\n%%EOF\n`;
+
+  pdf = Buffer.concat([pdf, Buffer.from(xref, "latin1")]);
+  return new Blob([pdf], { type: "application/pdf" });
+}
+
 function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
   const linkedinUrl = from.linkedinUrl || from.linkedInUrl || "";
   const email = from.recipientEmail || from.email || "";
@@ -169,16 +222,15 @@ export class MockUiPathGateway implements IUiPathGateway {
     const status = job.status;
     const delay = statusDelay(status);
 
-    if (status === JobStatus.AWAITING_CURATION) {
-      updateJob(jobId, {
-        draftData: genMockResume(request),
-        progress: progressForStatus(status),
-      });
+    if (status === JobStatus.AWAITING_CURATION || status === JobStatus.GENERATING_PDF || status === JobStatus.COMPLETED) {
       return;
     }
 
     setTimeout(() => {
-      const next = getNextStatus(status);
+      const currentJob = getJob(jobId);
+      if (!currentJob) return;
+      const currentStatus = currentJob.status;
+      const next = getNextStatus(currentStatus);
       if (!next) return;
 
       const updates: Parameters<typeof updateJob>[1] = {
@@ -213,18 +265,30 @@ export class MockUiPathGateway implements IUiPathGateway {
   async approveResume(jobId: string, curatedData?: unknown): Promise<void> {
     const job = getJob(jobId);
     if (!job) throw new Error("Job not found");
-    if (job.status !== JobStatus.AWAITING_CURATION) throw new Error("Job is not awaiting curation");
+    if (
+      job.status !== JobStatus.AWAITING_CURATION &&
+      job.status !== JobStatus.GENERATING_PDF &&
+      job.status !== JobStatus.DELIVERING_EMAIL
+    ) {
+      throw new Error(`Job cannot be approved in status '${job.status}'`);
+    }
 
     const mergedDraft =
       curatedData && typeof curatedData === "object"
         ? ({ ...job.draftData, ...(curatedData as Partial<ResumePayload>) } as ResumePayload)
         : job.draftData;
 
+    const alreadyProcessing =
+      job.status === JobStatus.GENERATING_PDF || job.status === JobStatus.DELIVERING_EMAIL;
+
     updateJob(jobId, {
       draftData: mergedDraft,
-      status: JobStatus.GENERATING_PDF,
-      progress: progressForStatus(JobStatus.GENERATING_PDF),
+      status: alreadyProcessing ? job.status : JobStatus.GENERATING_PDF,
+      progress: progressForStatus(alreadyProcessing ? job.status : JobStatus.GENERATING_PDF),
     });
+
+    // Only schedule the simulated pipeline once (avoid duplicate timers on re-approve)
+    if (alreadyProcessing) return;
 
     setTimeout(() => {
       updateJob(jobId, {
@@ -269,14 +333,28 @@ export class MockUiPathGateway implements IUiPathGateway {
 
     const job = getJob(jobId);
     if (job?.pdfBase64) {
-      const binary = atob(job.pdfBase64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return new Blob([bytes], { type: "application/pdf" });
+      const buffer = Buffer.from(job.pdfBase64, "base64");
+      return new Blob([buffer], { type: "application/pdf" });
     }
-    const content = "%PDF-1.3\n% mock pdf file: " + jobId + "\n";
-    return new Blob([content], { type: "application/pdf" });
+
+    // Generate a structurally valid minimal PDF (no external deps) so the
+    // browser can open it instead of reporting "PDF document is damaged".
+    const p = job?.draftData?.profile;
+    const title = p?.fullName || "Candidate Resume";
+    const lines = [
+      p?.headline ? p.headline : "ATS Resume",
+      p?.location ? `Location: ${p.location}` : "",
+      p?.email ? `Email: ${p.email}` : "",
+      p?.phone ? `Phone: ${p.phone}` : "",
+      "",
+      "Summary",
+      p?.summary ? (p.summary.length > 90 ? p.summary.slice(0, 90) + "..." : p.summary) : "",
+      "",
+      "Generated by AutoCV (mock mode)",
+      `Job: ${jobId}`,
+    ].filter((l) => l !== null);
+
+    return buildMinimalPdf(title, lines);
   }
+
 }

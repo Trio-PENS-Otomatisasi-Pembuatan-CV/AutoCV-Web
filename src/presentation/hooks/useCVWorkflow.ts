@@ -317,10 +317,14 @@ export function useCVWorkflow() {
         }
       } catch (err) {
         console.error("Approve error:", err);
-        setTimeout(() => {
-          setIsApproving(false);
-          setCurrentStep("delivery");
-        }, 1200);
+        setIsApproving(false);
+        const message =
+          err instanceof Error
+            ? err.message
+            : "Failed to approve the resume. Please retry.";
+        setSubmitError(message);
+        // If the job has already moved on server-side, resume polling to sync state
+        if (jobId) startPolling(jobId);
       }
     },
     [jobId, startPolling]

@@ -30,10 +30,14 @@ export async function GET(
     const blob = await gateway.downloadCv(jobId);
     const arrayBuffer = await blob.arrayBuffer();
 
+    const fallbackName = job?.draftData?.profile.fullName
+      ? job.draftData.profile.fullName.replace(/\s+/g, "_")
+      : jobId;
+
     return new NextResponse(arrayBuffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="ATS_Resume_${jobId}.pdf"`,
+        "Content-Disposition": `attachment; filename="ATS_Resume_${fallbackName}.pdf"`,
       },
     });
   } catch (error: unknown) {
