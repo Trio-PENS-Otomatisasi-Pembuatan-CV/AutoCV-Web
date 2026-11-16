@@ -29,11 +29,14 @@ export class LiveUiPathGateway implements IUiPathGateway {
     const tenantName = process.env.UIPATH_TENANT_NAME;
 
     const inputArgs = JSON.stringify({
-      jobId,
-      linkedinUrl: request.linkedinUrl || request.linkedInUrl || "",
-      githubUrl: request.githubUrl,
-      recipientEmail: request.recipientEmail || request.email || "",
-      targetRole: request.targetRole || "General Tech Professional",
+      in_JobId: jobId,
+      in_LinkedInUrl: request.linkedinUrl || request.linkedInUrl || "",
+      in_GitHubUrl: request.githubUrl,
+      in_RecipientEmail: request.recipientEmail || request.email || "",
+      in_TargetJobRole: request.targetRole || "General Tech Professional",
+      // Explicit gate: an unset Boolean defaults to False, which auto-approves
+      // the draft and generates a PDF before human curation.
+      in_RequireManualApproval: true,
     });
 
     const headers: Record<string, string> = {
@@ -114,10 +117,20 @@ export class LiveUiPathGateway implements IUiPathGateway {
     const folderId = process.env.UIPATH_FOLDER_ID;
     const tenantName = process.env.UIPATH_TENANT_NAME;
 
+    const approvedPayload = curatedData || job.draftData || {};
+
     const inputArgs = JSON.stringify({
-      jobId,
-      curatedData: curatedData || job.draftData,
-      recipientEmail: job.request?.recipientEmail || job.request?.email || "",
+      in_JobId: jobId,
+      // Existing inputs re-sent because the robot re-runs ingestion before the gate
+      in_LinkedInUrl: job.request?.linkedinUrl || job.request?.linkedInUrl || "",
+      in_GitHubUrl: job.request?.githubUrl || "",
+      in_RecipientEmail: job.request?.recipientEmail || job.request?.email || "",
+      in_TargetJobRole: job.request?.targetRole || "General Tech Professional",
+      // Non-empty payload opens the approval gate; the robot proceeds to
+      // document generation and email delivery.
+      in_ApprovedResumePayload:
+        typeof approvedPayload === "string" ? approvedPayload : JSON.stringify(approvedPayload),
+      in_RequireManualApproval: true,
     });
 
     const headers: Record<string, string> = {
