@@ -27,13 +27,24 @@ export class LiveUiPathGateway implements IUiPathGateway {
     const releaseKey = process.env.UIPATH_PROCESS_KEY_JOB1;
     const folderId = process.env.UIPATH_FOLDER_ID;
     const tenantName = process.env.UIPATH_TENANT_NAME;
+    const webhookBaseUrl =
+      process.env.BACKEND_WEBHOOK_BASE_URL?.replace(/\/+$/, "") || "http://localhost:3000";
 
     const inputArgs = JSON.stringify({
+      in_JobId: jobId,
       jobId,
+      in_LinkedInUrl: request.linkedinUrl || request.linkedInUrl || "",
       linkedinUrl: request.linkedinUrl || request.linkedInUrl || "",
+      in_GitHubUrl: request.githubUrl,
       githubUrl: request.githubUrl,
+      in_RecipientEmail: request.recipientEmail || request.email || "",
       recipientEmail: request.recipientEmail || request.email || "",
+      in_TargetJobRole: request.targetRole || "General Tech Professional",
       targetRole: request.targetRole || "General Tech Professional",
+      in_WebhookBaseUrl: webhookBaseUrl,
+      webhookBaseUrl,
+      in_UseMockFallback: true,
+      in_RequireManualApproval: true,
     });
 
     const headers: Record<string, string> = {
@@ -113,11 +124,22 @@ export class LiveUiPathGateway implements IUiPathGateway {
     const releaseKey = process.env.UIPATH_PROCESS_KEY_JOB2;
     const folderId = process.env.UIPATH_FOLDER_ID;
     const tenantName = process.env.UIPATH_TENANT_NAME;
+    const webhookBaseUrl =
+      process.env.BACKEND_WEBHOOK_BASE_URL?.replace(/\/+$/, "") || "http://localhost:3000";
+
+    const curatedPayload = curatedData || job.draftData;
+    const curatedJson =
+      typeof curatedPayload === "string" ? curatedPayload : JSON.stringify(curatedPayload);
 
     const inputArgs = JSON.stringify({
+      in_JobId: jobId,
       jobId,
-      curatedData: curatedData || job.draftData,
+      in_ApprovedResumePayload: curatedJson,
+      curatedData: curatedJson,
+      in_RecipientEmail: job.request?.recipientEmail || job.request?.email || "",
       recipientEmail: job.request?.recipientEmail || job.request?.email || "",
+      in_WebhookBaseUrl: webhookBaseUrl,
+      webhookBaseUrl,
     });
 
     const headers: Record<string, string> = {
