@@ -1,4 +1,4 @@
-import { apiRequest } from "./apiClient";
+import { apiRequest, resolveApiUrl } from "./apiClient";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
 
@@ -39,9 +39,9 @@ export async function approveCuratedCV(jobId: string, curatedData: unknown) {
 }
 
 export async function downloadCVPdf(jobId: string, filename: string = "ATS_Resume.pdf") {
-  const BASE_URL = typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL || "/api";
   if (typeof window === "undefined") throw new Error("downloadCVPdf only works in the browser");
-  const response = await fetch(`${BASE_URL}/cv/jobs/${jobId}/download`);
+  const downloadApiUrl = resolveApiUrl(`/cv/jobs/${jobId}/download`);
+  const response = await fetch(downloadApiUrl);
   if (!response.ok) {
     throw new Error("Failed to download PDF.");
   }

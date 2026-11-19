@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { PipelineStageItem, StageStatus } from "../molecules/PipelineStageItem";
 import { Button } from "../atoms/Button";
 import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
-import { ArrowRight, Bot, Cpu } from "lucide-react";
+import { ArrowRight, Bot, Cpu, Clock, Activity } from "lucide-react";
 
 export interface ProgressStepperProps {
   jobId: string | null;
@@ -17,6 +17,31 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
   progressPercent,
   onContinueToCuration,
 }) => {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  const isReadyForCuration =
+    status === JobStatus.AWAITING_CURATION ||
+    status === JobStatus.GENERATING_PDF ||
+    status === JobStatus.COMPLETED;
+
+  const isRunning =
+    status !== JobStatus.AWAITING_CURATION &&
+    status !== JobStatus.COMPLETED &&
+    status !== JobStatus.FAILED;
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout | null = null;
+    if (isRunning) {
+      setElapsedSeconds(0);
+      timer = setInterval(() => {
+        setElapsedSeconds((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [isRunning, jobId]);
+
   // Map job status to stage statuses
   const getStageStatus = (stageIdx: number): StageStatus => {
     switch (status) {
@@ -45,15 +70,30 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
     }
   };
 
-  const isReadyForCuration =
-    status === JobStatus.AWAITING_CURATION ||
-    status === JobStatus.GENERATING_PDF ||
-    status === JobStatus.COMPLETED;
-
-  const isRunning =
-    status !== JobStatus.AWAITING_CURATION &&
-    status !== JobStatus.COMPLETED &&
-    status !== JobStatus.FAILED;
+  const getStatusDetail = () => {
+    switch (status) {
+      case JobStatus.PENDING:
+        return "Connecting to UiPath Orchestrator and dispatching robot...";
+      case JobStatus.SCRAPING_LINKEDIN:
+        return "Robot is ingesting LinkedIn profile, extracting career experience & certifications...";
+      case JobStatus.FETCHING_GITHUB:
+        return "Robot is querying GitHub API for public repositories, languages & star metrics...";
+      case JobStatus.AI_SYNTHESIZING:
+        return "Synthesizing career achievements into ATS-optimized STAR bullet points...";
+      case JobStatus.AWAITING_CURATION:
+        return "Ingestion & synthesis complete! All career data loaded for your curation.";
+      case JobStatus.GENERATING_PDF:
+        return "Compiling Word document and rendering ATS-compliant PDF...";
+      case JobStatus.DELIVERING_EMAIL:
+        return "Sending final PDF resume to your recipient email...";
+      case JobStatus.COMPLETED:
+        return "All operations complete! Resume is ready for download.";
+      case JobStatus.FAILED:
+        return "Execution halted. Review error details below.";
+      default:
+        return "Executing automation pipeline...";
+    }
+  };
 
   return (
     <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-7 sm:p-8 shadow-sm">
@@ -74,6 +114,12 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {isRunning && (
+            <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-blue-700 bg-blue-50/80 px-2.5 py-1 rounded-full border border-blue-200">
+              <Clock className="size-3.5 text-blue-600 animate-spin" />
+              {elapsedSeconds}s / ~30s
+            </span>
+          )}
           {isRunning ? (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200/50">
               <span className="size-2 rounded-full bg-blue-600 animate-ping" />
@@ -103,6 +149,26 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
             className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 rounded-full"
             style={{ width: `${progressPercent}%` }}
           />
+        </div>
+
+        {/* Live System Activity Detail */}
+        <div className="mt-3.5 flex items-start gap-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70 p-3 text-xs text-slate-700">
+          <span className="relative flex size-2.5 mt-0.5">
+            {isRunning && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+            )}
+            <span
+              className={`relative inline-flex rounded-full size-2.5 ${
+                isRunning ? "bg-blue-600" : isReadyForCuration ? "bg-emerald-600" : "bg-slate-400"
+              }`}
+            ></span>
+          </span>
+          <div className="flex-1">
+            <p className="font-medium text-slate-800">{getStatusDetail()}</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Host: <strong className="text-slate-600 font-medium">ARUL-NITRO</strong> · Target Role: ATS Resume Engine · Cloud Orchestrator Dual-Sync
+            </p>
+          </div>
         </div>
       </div>
 

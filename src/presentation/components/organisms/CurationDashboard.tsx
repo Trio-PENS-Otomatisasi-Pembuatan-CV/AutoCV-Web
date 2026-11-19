@@ -3,17 +3,23 @@ import { ProjectCard } from "../molecules/ProjectCard";
 import { ExperienceItem } from "../molecules/ExperienceItem";
 import { ResumeDocument } from "./ResumeDocument";
 import { Button } from "../atoms/Button";
+import { TextInput } from "../atoms/TextInput";
 import {
   Sparkles,
   CheckCircle2,
   ShieldCheck,
   ArrowLeft,
   Wrench,
+  User,
+  Briefcase,
+  Mail,
+  MapPin,
 } from "lucide-react";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 
 export interface CurationDashboardProps {
   resume: ResumePayload;
+  onUpdateProfile?: (updates: Partial<ResumePayload["profile"]>) => void;
   onUpdateSummary: (summary: string) => void;
   onToggleProject: (projectId: string) => void;
   onUpdateExperienceBullets: (expId: string, bullets: string[]) => void;
@@ -28,6 +34,7 @@ export interface CurationDashboardProps {
 
 export const CurationDashboard: React.FC<CurationDashboardProps> = ({
   resume,
+  onUpdateProfile,
   onUpdateSummary,
   onToggleProject,
   onUpdateExperienceBullets,
@@ -86,6 +93,75 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Column: Editor controls (7 cols on desktop) */}
         <div className="lg:col-span-7 space-y-6">
+          {/* Section 0: Candidate Profile Details */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  <User className="size-4 text-blue-600" />
+                  Candidate Profile
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Edit your official name, target headline, and contact info
+                </p>
+              </div>
+              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                Live Document Sync
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Full Name <span className="text-rose-500">*</span>
+                </label>
+                <TextInput
+                  value={resume.profile.fullName}
+                  onChange={(e) => onUpdateProfile?.({ fullName: e.target.value })}
+                  placeholder="e.g. Fajrul Fatih"
+                  leftIcon={<User className="size-4" />}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Professional Headline
+                </label>
+                <TextInput
+                  value={resume.profile.headline || ""}
+                  onChange={(e) => onUpdateProfile?.({ headline: e.target.value })}
+                  placeholder="e.g. Software Engineer | Fullstack Developer"
+                  leftIcon={<Briefcase className="size-4" />}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Email Address
+                </label>
+                <TextInput
+                  type="email"
+                  value={resume.profile.email || ""}
+                  onChange={(e) => onUpdateProfile?.({ email: e.target.value })}
+                  placeholder="e.g. name@example.com"
+                  leftIcon={<Mail className="size-4" />}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Location (City, Country)
+                </label>
+                <TextInput
+                  value={resume.profile.location || ""}
+                  onChange={(e) => onUpdateProfile?.({ location: e.target.value })}
+                  placeholder="e.g. Surabaya, Indonesia"
+                  leftIcon={<MapPin className="size-4" />}
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Section 1: Professional Summary */}
           <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
             <div className="flex items-center justify-between gap-3 mb-3">

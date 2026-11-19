@@ -46,6 +46,7 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
   const {
     curatedResume,
     setResume,
+    updateProfile,
     updateSummary,
     toggleProject,
     updateExperienceBullets,
@@ -122,6 +123,7 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
           <div className="w-full transition-all duration-300">
             <CurationDashboard
               resume={curatedResume}
+              onUpdateProfile={updateProfile}
               onUpdateSummary={updateSummary}
               onToggleProject={toggleProject}
               onUpdateExperienceBullets={updateExperienceBullets}

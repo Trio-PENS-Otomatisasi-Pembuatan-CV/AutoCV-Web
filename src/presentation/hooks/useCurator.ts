@@ -4,6 +4,16 @@ import type { ResumePayload } from "@/core/entities/ResumePayload";
 export function useCurator(initialResume: ResumePayload) {
   const [resume, setResume] = useState<ResumePayload>(initialResume);
 
+  const updateProfile = useCallback((updates: Partial<ResumePayload["profile"]>) => {
+    setResume((prev) => ({
+      ...prev,
+      profile: {
+        ...prev.profile,
+        ...updates,
+      },
+    }));
+  }, []);
+
   const updateSummary = useCallback((summary: string) => {
     setResume((prev) => ({
       ...prev,
@@ -74,6 +84,7 @@ export function useCurator(initialResume: ResumePayload) {
   return {
     curatedResume: resume,
     setResume,
+    updateProfile,
     updateSummary,
     toggleProject,
     updateExperienceBullets,
