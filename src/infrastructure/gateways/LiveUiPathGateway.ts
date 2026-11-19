@@ -346,8 +346,34 @@ export class LiveUiPathGateway implements IUiPathGateway {
       throw new Error(`Job '${jobId}' not found`);
     }
 
-    if (job.pdfBase64) {
-      const binary = atob(job.pdfBase64);
+    let pdfBase64 = job.pdfBase64;
+    if (!pdfBase64) {
+      const name = job.draftData?.profile.fullName?.replace(/\s+/g, "_") || "";
+      const userProfile = process.env.USERPROFILE || "";
+      const searchDirs = [
+        path.resolve(process.cwd(), "..", "robot", "Data", "Outputs"),
+        path.join(userProfile, ".nuget", "packages", "autocv", "1.0.5", "content", "Data", "Outputs"),
+      ];
+      for (const dir of searchDirs) {
+        if (fs.existsSync(dir)) {
+          const files = fs
+            .readdirSync(dir)
+            .filter((f) => f.endsWith(".pdf") && (name ? f.includes(name) : true));
+          if (files.length > 0) {
+            files.sort(
+              (a, b) =>
+                fs.statSync(path.join(dir, b)).mtimeMs - fs.statSync(path.join(dir, a)).mtimeMs
+            );
+            pdfBase64 = fs.readFileSync(path.join(dir, files[0])).toString("base64");
+            updateJob(jobId, { pdfBase64 });
+            break;
+          }
+        }
+      }
+    }
+
+    if (pdfBase64) {
+      const binary = atob(pdfBase64);
       const bytes = new Uint8Array(binary.length);
       for (let i = 0; i < binary.length; i++) {
         bytes[i] = binary.charCodeAt(i);
