@@ -116,6 +116,11 @@ export function useCVWorkflow() {
   const lastStatusRef = useRef<string>("");
   const lastStatusChangeRef = useRef<number>(0);
   const pollErrorCountRef = useRef<number>(0);
+  const isApprovingRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    isApprovingRef.current = isApproving;
+  }, [isApproving]);
 
   const MAX_POLL_DURATION_MS = 4 * 60 * 1000; // 4 minutes total
   const MAX_NO_STATUS_CHANGE_MS = 180 * 1000; // 3 minutes no status change
@@ -190,20 +195,24 @@ export function useCVWorkflow() {
           }
 
           if (res.status === JobStatus.AWAITING_CURATION) {
-            stopPolling();
-            setIsSubmitting(false);
-            setHasCurated(true);
-            setSubmitError(null);
-            setCurrentStep("curation");
+            if (!isApprovingRef.current) {
+              stopPolling();
+              setIsSubmitting(false);
+              setHasCurated(true);
+              setSubmitError(null);
+              setCurrentStep("curation");
+            }
           } else if (res.status === JobStatus.COMPLETED) {
             stopPolling();
             setIsApproving(false);
+            isApprovingRef.current = false;
             setSubmitError(null);
             setCurrentStep("delivery");
           } else if (res.status === JobStatus.FAILED) {
             stopPolling();
             setIsSubmitting(false);
             setIsApproving(false);
+            isApprovingRef.current = false;
             setSubmitError(res.errorMessage || "Job failed during robot execution.");
           }
         } catch (e) {
@@ -302,6 +311,7 @@ export function useCVWorkflow() {
   const handleApproveCuration = useCallback(
     async (curatedResume: ResumePayload) => {
       try {
+        isApprovingRef.current = true;
         setIsApproving(true);
         setResumeData(curatedResume);
 
