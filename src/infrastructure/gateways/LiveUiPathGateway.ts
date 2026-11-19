@@ -7,6 +7,67 @@ import { normalizeDraftPayload } from "@/application/dto/DraftPayloadDTO";
 import fs from "fs";
 import path from "path";
 
+function prepareCompactCuratedPayload(raw: any): string {
+  if (typeof raw === "string") {
+    try {
+      raw = JSON.parse(raw);
+    } catch {
+      return raw;
+    }
+  }
+
+  const profile = raw?.profile || raw?.personal_info || {};
+  const rawProjects = raw?.projects || raw?.repositories || [];
+  const selectedProjects = (Array.isArray(rawProjects) ? rawProjects : [])
+    .filter((p: any) => p && p.isSelected !== false)
+    .slice(0, 5)
+    .map((p: any) => ({
+      name: p.name || "",
+      techStack: p.techStack || (p.language ? [p.language] : []),
+      language: p.language || "",
+      repoUrl: p.repoUrl || p.repo_url || p.html_url || "",
+      starSummary: p.starSummary || p.star_summary || p.description || "",
+      isSelected: true,
+    }));
+
+  const experiences = (Array.isArray(raw?.experiences) ? raw.experiences : []).map((e: any) => ({
+    role: e.role || e.position || "",
+    company: e.company || "",
+    startDate: e.startDate || e.period || "",
+    endDate: e.endDate || "",
+    location: e.location || "",
+    bulletPoints: Array.isArray(e.bulletPoints) ? e.bulletPoints : (e.description ? [e.description] : []),
+  }));
+
+  const education = (Array.isArray(raw?.education) ? raw.education : []).map((edu: any) => ({
+    degree: edu.degree || "",
+    institution: edu.institution || "",
+    graduationYear: edu.graduationYear || edu.year || "",
+    gpa: edu.gpa || "",
+  }));
+
+  const skills = Array.isArray(raw?.skills) ? raw.skills : [];
+
+  const compact = {
+    profile: {
+      fullName: profile.fullName || profile.name || "Candidate",
+      headline: profile.headline || "",
+      email: profile.email || profile.recipient_email || "",
+      phone: profile.phone || "",
+      location: profile.location || "",
+      summary: profile.summary || "",
+      linkedinUrl: profile.linkedinUrl || profile.linkedin_url || "",
+      githubUrl: profile.githubUrl || profile.github_url || "",
+    },
+    experiences,
+    projects: selectedProjects,
+    skills,
+    education,
+  };
+
+  return JSON.stringify(compact);
+}
+
 function findLocalPdfFile(pdfPath: string): string | null {
   if (!pdfPath) return null;
   if (path.isAbsolute(pdfPath) && fs.existsSync(pdfPath)) {
@@ -274,18 +335,13 @@ export class LiveUiPathGateway implements IUiPathGateway {
       process.env.BACKEND_WEBHOOK_BASE_URL?.replace(/\/+$/, "") || "http://localhost:3000";
 
     const curatedPayload = curatedData || job.draftData;
-    const curatedJson =
-      typeof curatedPayload === "string" ? curatedPayload : JSON.stringify(curatedPayload);
+    const compactCuratedJson = prepareCompactCuratedPayload(curatedPayload);
 
     const inputArgs = JSON.stringify({
       in_JobId: jobId,
-      jobId,
-      in_ApprovedResumePayload: curatedJson,
-      curatedData: curatedJson,
+      in_ApprovedResumePayload: compactCuratedJson,
       in_RecipientEmail: job.request?.recipientEmail || job.request?.email || "",
-      recipientEmail: job.request?.recipientEmail || job.request?.email || "",
       in_WebhookBaseUrl: webhookBaseUrl,
-      webhookBaseUrl,
     });
 
     const headers: Record<string, string> = {
