@@ -5,6 +5,28 @@ import { orchestratorAuth } from "./OrchestratorAuthClient";
 import { createJob, getJob, updateJob } from "@/infrastructure/storage/JobStore";
 import { normalizeDraftPayload } from "@/application/dto/DraftPayloadDTO";
 import fs from "fs";
+import path from "path";
+
+function findLocalPdfFile(pdfPath: string): string | null {
+  if (!pdfPath) return null;
+  if (path.isAbsolute(pdfPath) && fs.existsSync(pdfPath)) {
+    return pdfPath;
+  }
+  const basename = path.basename(pdfPath);
+  const userProfile = process.env.USERPROFILE || "";
+  const candidates = [
+    path.resolve(process.cwd(), "..", "robot", pdfPath),
+    path.resolve(process.cwd(), "..", "robot", "Data", "Outputs", basename),
+    path.resolve(process.cwd(), pdfPath),
+    path.resolve(process.cwd(), "Data", "Outputs", basename),
+    path.join(userProfile, ".nuget", "packages", "autocv", "1.0.5", "content", pdfPath),
+    path.join(userProfile, ".nuget", "packages", "autocv", "1.0.5", "content", "Data", "Outputs", basename),
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  return null;
+}
 
 interface OrchestratorStartJobsResponse {
   value?: Array<{
@@ -165,8 +187,30 @@ export class LiveUiPathGateway implements IUiPathGateway {
                   ? JSON.parse(orchJob.OutputArguments)
                   : orchJob.OutputArguments;
 
-              // Job 1 finished: Draft payload ready for curation
-              if (outArgs.out_DraftResumePayload) {
+              // Check if Job 2 is complete (out_JobStatus === "COMPLETED" or PDF path present or job in GENERATING_PDF)
+              if (
+                outArgs.out_JobStatus === "COMPLETED" ||
+                Boolean(outArgs.out_OutputPdfPath) ||
+                job.status === JobStatus.GENERATING_PDF
+              ) {
+                const pdfPath = outArgs.out_OutputPdfPath || "";
+                let pdfBase64: string | undefined;
+                const localPdfFile = findLocalPdfFile(pdfPath);
+                if (localPdfFile) {
+                  try {
+                    pdfBase64 = fs.readFileSync(localPdfFile).toString("base64");
+                  } catch (e) {
+                    console.warn("[LiveUiPathGateway] Could not read local PDF file:", e);
+                  }
+                }
+                updateJob(jobId, {
+                  status: JobStatus.COMPLETED,
+                  progress: 100,
+                  pdfBase64: pdfBase64 || job.pdfBase64,
+                  downloadUrl: `/api/cv/jobs/${jobId}/download`,
+                });
+              } else if (outArgs.out_JobStatus === "CURATING" || outArgs.out_DraftResumePayload) {
+                // Job 1 finished: Draft payload ready for curation
                 const rawDraft =
                   typeof outArgs.out_DraftResumePayload === "string"
                     ? JSON.parse(outArgs.out_DraftResumePayload)
@@ -177,23 +221,6 @@ export class LiveUiPathGateway implements IUiPathGateway {
                   status: JobStatus.AWAITING_CURATION,
                   progress: 75,
                   draftData: normalized,
-                });
-              } else if (outArgs.out_OutputPdfPath) {
-                // Job 2 finished: PDF generated
-                const pdfPath = outArgs.out_OutputPdfPath;
-                let pdfBase64: string | undefined;
-                if (typeof pdfPath === "string" && fs.existsSync(pdfPath)) {
-                  try {
-                    pdfBase64 = fs.readFileSync(pdfPath).toString("base64");
-                  } catch (e) {
-                    console.warn("[LiveUiPathGateway] Could not read local PDF file:", e);
-                  }
-                }
-                updateJob(jobId, {
-                  status: JobStatus.COMPLETED,
-                  progress: 100,
-                  pdfBase64: pdfBase64 || job.pdfBase64,
-                  downloadUrl: `/api/cv/jobs/${jobId}/download`,
                 });
               }
             } else if (job.status === JobStatus.GENERATING_PDF) {
