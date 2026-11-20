@@ -3,11 +3,13 @@ import { getJob } from "@/infrastructure/storage/JobStore";
 import { getUiPathGateway } from "@/infrastructure/gateways/GatewayFactory";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   try {
     const { jobId } = await params;
+    const isDownload = req.nextUrl.searchParams.get("download") === "true";
+    const dispositionType = isDownload ? "attachment" : "inline";
     const job = getJob(jobId);
 
     // If PDF base64 is in JobStore, serve it directly
@@ -20,7 +22,7 @@ export async function GET(
       return new NextResponse(buffer, {
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="ATS_Resume_${name}.pdf"`,
+          "Content-Disposition": `${dispositionType}; filename="ATS_Resume_${name}.pdf"`,
         },
       });
     }
@@ -33,7 +35,7 @@ export async function GET(
     return new NextResponse(arrayBuffer, {
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="ATS_Resume_${jobId}.pdf"`,
+        "Content-Disposition": `${dispositionType}; filename="ATS_Resume_${jobId}.pdf"`,
       },
     });
   } catch (error: unknown) {

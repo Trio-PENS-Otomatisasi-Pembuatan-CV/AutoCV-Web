@@ -8,7 +8,6 @@ import type {
 } from "@/core/entities/ResumePayload";
 
 // Tolerant schema accepting either camelCase (web ResumePayload) or snake_case (robot schema v2.0).
-// Unknown/extra keys are stripped. Minimal required: profile (or personal_info).
 const ProfileSchema = z
   .object({
     fullName: z.string().optional(),
@@ -35,9 +34,12 @@ const ExperienceSchema = z
     start_date: z.string().optional(),
     endDate: z.string().optional(),
     end_date: z.string().optional(),
+    period: z.string().optional(),
+    location: z.string().optional(),
     bulletPoints: z.array(z.string()).optional(),
     bullet_points: z.array(z.string()).optional(),
     highlights: z.array(z.string()).optional(),
+    description: z.string().optional(),
   })
   .passthrough();
 
@@ -79,7 +81,6 @@ const EducationSchema = z
   })
   .passthrough();
 
-// Accept either shape; require at least a profile-ish block.
 export const DraftPayloadSchema = z
   .object({
     profile: ProfileSchema.optional(),
@@ -90,7 +91,7 @@ export const DraftPayloadSchema = z
     workExperience: z.array(ExperienceSchema).optional(),
     projects: z.array(ProjectSchema).optional(),
     repositories: z.array(ProjectSchema).optional(),
-    skills: z.array(SkillCategorySchema).optional(),
+    skills: z.union([z.array(SkillCategorySchema), z.record(z.string(), z.any())]).optional(),
     education: z.array(EducationSchema).optional(),
     educations: z.array(EducationSchema).optional(),
   })
@@ -110,56 +111,122 @@ function pickStr(...vals: (string | undefined)[]): string {
   return pick(...vals) ?? "";
 }
 
-function normProfile(raw: z.infer<typeof ProfileSchema>): ResumePayload["profile"] {
-  return {
-    fullName: pickStr(raw.fullName, raw.full_name),
-    headline: pick(raw.headline),
-    email: pickStr(raw.email),
-    phone: pick(raw.phone),
-    location: pick(raw.location),
-    summary: pickStr(raw.summary),
-    linkedinUrl: pick(raw.linkedinUrl, raw.linkedin_url),
-    githubUrl: pick(raw.githubUrl, raw.github_url),
-  };
+function cleanProjectSummary(name: string, desc?: string, lang?: string, stack?: string[]): string {
+  if (desc && desc.trim()) return desc.trim();
+  const tech = lang || (stack && stack[0]) || "";
+  const lower = (name || "").toLowerCase();
+  if (lower.includes("doc")) {
+    return "Comprehensive technical documentation and architectural specifications for software workflows.";
+  }
+  if (lower.includes("devsecops") || lower.includes("infra")) {
+    return `Automated CI/CD security scanning pipelines and infrastructure deployment configurations${tech ? ` with ${tech}` : ""}.`;
+  }
+  if (lower.includes("workshop")) {
+    return `Hands-on container orchestration, system administration, and network configuration laboratory repository${tech ? ` using ${tech}` : ""}.`;
+  }
+  if (lower.includes("backend")) {
+    return `High-performance backend services, data persistence, and RESTful API endpoints${tech ? ` built with ${tech}` : ""}.`;
+  }
+  if (lower.includes("frontend")) {
+    return `Modern responsive web application interface with component architecture${tech ? ` developed in ${tech}` : ""}.`;
+  }
+  if (lower.includes("mobile")) {
+    return `Cross-platform mobile application interface with offline state management${tech ? ` using ${tech}` : ""}.`;
+  }
+  return `Engineered modular technical software solution${tech ? ` using ${tech}` : ""} following clean architecture principles.`;
 }
 
-function normExperience(raw: z.infer<typeof ExperienceSchema>): WorkExperience {
-  return {
-    id: raw.id ?? `exp-${Math.random().toString(36).slice(2, 8)}`,
-    company: pickStr(raw.company),
-    role: pickStr(raw.role, raw.position),
-    startDate: pick(raw.startDate, raw.start_date),
-    endDate: pick(raw.endDate, raw.end_date),
-    bulletPoints: pick(raw.bulletPoints, raw.bullet_points, raw.highlights) ?? [],
-  };
+function cleanExperienceList(rawExps: any[]): WorkExperience[] {
+  const noiseKeywords = /^(present|on-site|onsite|hybrid|remote|\+?\d+\s*skills?)$/i;
+  const durationPattern = /^(\d+\s*(yr|mos|year|month)|·|\d+\s*mo)/i;
+  const dateRangePattern = /^[A-Za-z]{3}\s*\d{4}\s*[-–]\s*([A-Za-z]{3}\s*\d{4}|Present)/i;
+  const singleDatePattern = /^[A-Za-z]{3}\s*\d{4}(\s*·\s*\d+\s*mo)?/i;
+
+  return rawExps.map((e, idx) => {
+    let role = pickStr(e.role, e.position, "Contributor").trim();
+    let company = pickStr(e.company, e.organization, "Organization").trim();
+    let startDate = pick(e.startDate, e.start_date);
+    let endDate = pick(e.endDate, e.end_date);
+    let location = e.location || "";
+    let rawPeriod = (e.period || "").trim();
+
+    if (durationPattern.test(company) || !company) {
+      company = role || "Organization";
+      role = "Contributor";
+    }
+
+    let rawBullets: string[] = [];
+    const sourceBullets = pick(e.bulletPoints, e.bullet_points, e.highlights);
+    if (Array.isArray(sourceBullets)) {
+      rawBullets = sourceBullets.flatMap((b) => String(b).split("\n"));
+    } else if (e.description) {
+      rawBullets = String(e.description).split("\n");
+    }
+
+    const cleanedBullets: string[] = [];
+    for (const b of rawBullets) {
+      let trimmed = b.trim().replace(/^•\s*/, "");
+      if (!trimmed) continue;
+      if (noiseKeywords.test(trimmed)) continue;
+      if (durationPattern.test(trimmed)) continue;
+
+      trimmed = trimmed.replace(/\s+and\s+\+\d+\s+skills?/gi, "").trim();
+
+      if (dateRangePattern.test(trimmed) || singleDatePattern.test(trimmed)) {
+        if (!rawPeriod && !startDate) {
+          rawPeriod = trimmed;
+        }
+        continue;
+      }
+
+      if (/^[A-Za-z\s]+,\s*[A-Za-z\s]+.*$/i.test(trimmed) && trimmed.toLowerCase().includes("indonesia")) {
+        if (!location) {
+          location = trimmed.replace(/·\s*(on-site|hybrid|remote)/gi, "").trim();
+        }
+        continue;
+      }
+
+      if (role === "Contributor" && trimmed.length < 50 && !trimmed.includes("—")) {
+        role = trimmed;
+        continue;
+      }
+
+      cleanedBullets.push(trimmed);
+    }
+
+    // Clean period
+    let period = (rawPeriod || startDate || "").trim();
+    if (endDate && endDate !== "Present" && !period.includes(endDate)) {
+      period = `${period} – ${endDate}`;
+    }
+    period = period.replace(/·\s*\d+\s*(yr|mos|year|month)s?(\s*\d+\s*mos?)?/gi, "").trim();
+    period = period.replace(/·\s*\d+\s*mo/gi, "").trim();
+    period = period.replace(/(–\s*Present\s*)+/gi, "– Present");
+    period = period.replace(/(-\s*Present\s*)+/gi, "– Present");
+    period = period.replace(/\s*-\s*/g, " – ").replace(/\s*–\s*$/, "").trim();
+
+    if (!startDate && period) {
+      const parts = period.split("–");
+      startDate = parts[0]?.trim();
+      endDate = parts[1]?.trim() || "Present";
+    }
+
+    return {
+      id: e.id ?? `exp-${idx + 1}`,
+      company: company || "Organization",
+      role: role || "Contributor",
+      startDate: startDate || period || "Present",
+      endDate: endDate || "Present",
+      location,
+      bulletPoints: cleanedBullets.length > 0 ? cleanedBullets : ["Contributed to core organizational activities and technical initiatives."],
+    };
+  });
 }
 
-function normProject(raw: z.infer<typeof ProjectSchema>): TechnicalProject {
-  return {
-    id: raw.id ?? `proj-${Math.random().toString(36).slice(2, 8)}`,
-    name: pickStr(raw.name),
-    repoUrl: pickStr(raw.repoUrl, raw.repo_url, raw.url),
-    stars: raw.stars ?? raw.star_count,
-    language: raw.language,
-    techStack: raw.techStack ?? raw.tech_stack,
-    starSummary: pickStr(raw.starSummary, raw.star_summary, raw.description),
-    isSelected: raw.isSelected ?? raw.is_selected ?? true,
-  };
-}
-
-function normSkills(raw: z.infer<typeof SkillCategorySchema>): SkillCategory {
+function normSkills(raw: any): SkillCategory {
   return {
     category: raw.category ?? "Other",
     items: raw.items ?? [],
-  };
-}
-
-function normEducation(raw: z.infer<typeof EducationSchema>): EducationRecord {
-  return {
-    institution: pickStr(raw.institution),
-    degree: pickStr(raw.degree),
-    graduationYear: pick(raw.graduationYear, raw.graduation_year, raw.year),
-    gpa: pick(raw.gpa),
   };
 }
 
@@ -171,56 +238,65 @@ export function normalizeDraftPayload(raw: any): ResumePayload {
   const rawProfile = pick(raw?.profile, raw?.personal_info, raw?.personalInfo) || {};
   const profile: ResumePayload["profile"] = {
     fullName: pickStr(rawProfile.fullName, rawProfile.full_name, linkedIn.full_name, gitHub.user?.name, "Candidate"),
-    headline: pick(rawProfile.headline, linkedIn.headline, targetRole) || "Professional",
+    headline: pick(rawProfile.headline, linkedIn.headline, targetRole) || "Software Engineer",
     email: pickStr(rawProfile.email, rawProfile.recipient_email),
     phone: pick(rawProfile.phone),
-    location: pick(rawProfile.location),
+    location: pick(rawProfile.location, "Indonesia"),
     summary: pickStr(
       rawProfile.summary,
       linkedIn.about,
-      targetRole ? `Experienced professional targeting ${targetRole} roles with proven track record in software engineering and technical projects.` : undefined
+      targetRole ? `Accomplished engineering professional targeting ${targetRole} roles with proven expertise in software architecture, automation pipelines, and modern web systems.` : undefined
     ),
     linkedinUrl: pick(rawProfile.linkedinUrl, rawProfile.linkedin_url),
     githubUrl: pick(rawProfile.githubUrl, rawProfile.github_url),
   };
 
-  // Experiences: pick from raw experiences or linkedin_data.experiences
+  // Experiences
   const rawExpsList = pick(raw?.experiences, raw?.work_experience, raw?.workExperience);
   const rawExps: any[] =
     Array.isArray(rawExpsList) && rawExpsList.length > 0
       ? rawExpsList
       : (linkedIn.experiences ?? []);
-  const experiences: WorkExperience[] = rawExps.map((e, idx) => ({
-    id: e.id ?? `exp-${idx + 1}`,
-    company: pickStr(e.company, e.organization, "Organization"),
-    role: pickStr(e.role, e.position, "Contributor"),
-    startDate: pick(e.startDate, e.start_date) || (e.period ? e.period.split("-")[0]?.trim() : undefined),
-    endDate: pick(e.endDate, e.end_date) || (e.period ? e.period.split("-")[1]?.trim() : undefined),
-    bulletPoints: pick(e.bulletPoints, e.bullet_points, e.highlights) ?? (e.description ? [e.description] : []),
-  }));
+  const experiences = cleanExperienceList(rawExps);
 
-  // Projects: pick from raw projects, repositories, or github_data.repositories
+  // Projects
   const rawProjsList = pick(raw?.projects, raw?.repositories);
   const rawProjs: any[] =
     Array.isArray(rawProjsList) && rawProjsList.length > 0
       ? rawProjsList
       : (gitHub.repositories ?? []);
-  const projects: TechnicalProject[] = rawProjs.map((p, idx) => ({
-    id: p.id ?? `proj-${idx + 1}`,
-    name: pickStr(p.name, `Project ${idx + 1}`),
-    repoUrl: pickStr(p.repoUrl, p.repo_url, p.html_url, p.url),
-    stars: p.stars ?? p.star_count ?? p.stargazers_count ?? 0,
-    language: p.language || (Array.isArray(p.topics) && p.topics.length > 0 ? p.topics[0] : undefined),
-    techStack: p.techStack ?? p.tech_stack ?? (p.language ? [p.language] : []),
-    starSummary: pickStr(p.starSummary, p.star_summary, p.description, `Active project repository`),
-    isSelected: p.isSelected ?? p.is_selected ?? (idx < 5),
-  }));
 
-  // Skills: categories or list from linkedin
+  const projects: TechnicalProject[] = rawProjs.map((p, idx) => {
+    const name = pickStr(p.name, `Project ${idx + 1}`);
+    const language = p.language || (Array.isArray(p.topics) && p.topics.length > 0 ? p.topics[0] : undefined);
+    const techStack = p.techStack ?? p.tech_stack ?? (language ? [language] : []);
+    const rawSummary = pick(p.starSummary, p.star_summary, p.description);
+    const starSummary = cleanProjectSummary(name, rawSummary, language, techStack);
+
+    return {
+      id: p.id ?? `proj-${idx + 1}`,
+      name,
+      repoUrl: pickStr(p.repoUrl, p.repo_url, p.html_url, p.url),
+      stars: p.stars ?? p.star_count ?? p.stargazers_count ?? 0,
+      language,
+      techStack,
+      starSummary,
+      isSelected: p.isSelected ?? p.is_selected ?? (idx < 5),
+    };
+  });
+
+  // Skills
   let skills: SkillCategory[] = [];
   if (Array.isArray(raw?.skills) && raw.skills.length > 0 && typeof raw.skills[0] === "object" && "category" in raw.skills[0]) {
     skills = raw.skills.map(normSkills);
   } else {
+    // Extract languages from repositories
+    if (Array.isArray(gitHub.repositories)) {
+      const langs = Array.from(new Set(gitHub.repositories.map((r: any) => r.language).filter(Boolean))) as string[];
+      if (langs.length > 0) {
+        skills.push({ category: "Programming Languages", items: langs });
+      }
+    }
     const techItems: string[] = Array.isArray(linkedIn.skills) ? linkedIn.skills : [];
     if (techItems.length > 0) {
       skills.push({ category: "Technical Skills", items: techItems });
@@ -232,11 +308,11 @@ export function normalizeDraftPayload(raw: any): ResumePayload {
       skills.push({ category: "Certifications", items: certItems });
     }
     if (skills.length === 0) {
-      skills.push({ category: "Core Competencies", items: ["Fullstack Development", "Software Engineering", "Problem Solving"] });
+      skills.push({ category: "Core Competencies", items: ["Software Engineering", "Fullstack Development", "System Architecture"] });
     }
   }
 
-  // Education: pick from raw education or linkedin_data.education
+  // Education
   const rawEdus: any[] = pick(raw?.education, raw?.educations, linkedIn.education) ?? [];
   const education: EducationRecord[] = rawEdus.map((edu) => ({
     institution: pickStr(edu.institution),

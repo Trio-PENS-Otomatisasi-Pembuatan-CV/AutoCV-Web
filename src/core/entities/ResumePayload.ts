@@ -16,6 +16,7 @@ export interface WorkExperience {
   role: string;
   startDate?: string;
   endDate?: string;
+  location?: string;
   bulletPoints: string[];
 }
 

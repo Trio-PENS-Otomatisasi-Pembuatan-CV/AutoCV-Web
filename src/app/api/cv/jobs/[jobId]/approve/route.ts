@@ -16,6 +16,7 @@ export async function POST(
     return NextResponse.json({ success: true, status: "GENERATING_PDF" });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Failed to approve resume";
+    console.error(`[Approve API Error] Job:`, error);
     return NextResponse.json(
       { error: message },
       { status: 500 }
