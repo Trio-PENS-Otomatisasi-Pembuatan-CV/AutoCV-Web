@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { ProjectCard } from "../molecules/ProjectCard";
 import { ExperienceItem } from "../molecules/ExperienceItem";
 import { ResumeDocument } from "./ResumeDocument";
@@ -7,13 +7,15 @@ import { TextInput } from "../atoms/TextInput";
 import {
   Sparkles,
   CheckCircle2,
-  ShieldCheck,
   ArrowLeft,
   Wrench,
   User,
   Briefcase,
   Mail,
   MapPin,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
 } from "lucide-react";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 
@@ -22,6 +24,7 @@ export interface CurationDashboardProps {
   onUpdateProfile?: (updates: Partial<ResumePayload["profile"]>) => void;
   onUpdateSummary: (summary: string) => void;
   onToggleProject: (projectId: string) => void;
+  onToggleExperience?: (expId: string) => void;
   onUpdateExperienceBullets: (expId: string, bullets: string[]) => void;
   onUpdateSkillCategoryItems?: (categoryIndex: number, itemsString: string) => void;
   onRegenerateSummary: () => void;
@@ -37,6 +40,7 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
   onUpdateProfile,
   onUpdateSummary,
   onToggleProject,
+  onToggleExperience,
   onUpdateExperienceBullets,
   onUpdateSkillCategoryItems,
   onRegenerateSummary,
@@ -46,45 +50,96 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
   onBackToInput,
   isApproving = false,
 }) => {
+  const [zoom, setZoom] = useState<number>(100);
+
   const selectedCount = resume.projects.filter((p) => p.isSelected !== false).length;
+  const selectedExpCount = resume.experiences.filter((e) => e.isSelected !== false).length;
   const handleRewrite = onRequestAIRewrite || onRegenerateSummary || onRerunSynthesis;
+
+  // Completion calculation for Section Stepper / Anchor Navigation
+  const sections = [
+    {
+      id: "section-profile",
+      label: "Candidate Profile",
+      isComplete: Boolean(resume.profile.fullName?.trim() && resume.profile.email?.trim()),
+    },
+    {
+      id: "section-summary",
+      label: "Professional Summary",
+      isComplete: Boolean(resume.profile.summary?.trim() && resume.profile.summary.trim().length > 20),
+    },
+    {
+      id: "section-projects",
+      label: "Featured Repositories",
+      isComplete: selectedCount >= 1,
+      badge: `${selectedCount} selected`,
+    },
+    {
+      id: "section-experience",
+      label: "Work Experience",
+      isComplete: selectedExpCount >= 1,
+      badge: `${selectedExpCount} selected`,
+    },
+    {
+      id: "section-skills",
+      label: "Technical Skills",
+      isComplete: resume.skills.some((s) => s.items.length > 0),
+    },
+  ];
+
+  const completedSectionsCount = sections.filter((s) => s.isComplete).length;
+
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   return (
     <div className="w-full">
-      {/* Page Header */}
-      <div className="mb-7 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <div className="mb-2 flex items-center gap-3">
-            {onBackToInput && (
-              <button
-                type="button"
-                onClick={onBackToInput}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer"
-              >
-                <ArrowLeft className="size-3.5" /> Back to Profiles
-              </button>
-            )}
-            <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
-              <span>/</span>
-              <span className="text-slate-600 font-semibold">
-                {resume.profile.fullName} — {resume.profile.headline || "Candidate"}
-              </span>
-            </div>
-          </div>
-          <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-slate-900">
-            Curation Studio: Review &amp; Direct AI Draft
-          </h1>
-          <p className="mt-1.5 text-xs sm:text-sm text-slate-600">
-            <span className="font-semibold text-blue-600">#HumanInTheLead:</span> You
-            control which repositories are featured, refine bullet points, and curate skills before
-            final compilation.
-          </p>
-        </div>
+      {/* 2. Compact Page Header & Microcopy */}
+      <div className="mb-5">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+          Curation Studio
+        </h1>
+        <p className="mt-1 text-xs sm:text-sm text-slate-600 leading-relaxed max-w-3xl">
+          Review your details, refine AI-generated bullet points, and curate key projects before
+          compiling your final resume.
+        </p>
 
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3.5 py-1.5 text-xs font-semibold text-slate-700 shadow-xs">
-            <ShieldCheck className="size-4 text-emerald-600" />
-            ATS Compliant Format
+        {/* 4a. Completeness Indicator & Anchor Navigation */}
+        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2.5 pt-1 border-t border-slate-200/70">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+            {sections.map((sec) => (
+              <button
+                key={sec.id}
+                type="button"
+                onClick={() => scrollToSection(sec.id)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all cursor-pointer ${
+                  sec.isComplete
+                    ? "border-emerald-200 bg-emerald-50/80 text-emerald-800 hover:bg-emerald-100"
+                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                <span
+                  className={`size-1.5 rounded-full ${
+                    sec.isComplete ? "bg-emerald-500" : "bg-slate-300"
+                  }`}
+                />
+                <span>{sec.label}</span>
+                {sec.badge && (
+                  <span className="text-[10px] font-normal text-slate-500">
+                    ({sec.badge})
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <span className="text-[11px] font-medium text-slate-500 ml-auto hidden sm:inline">
+            <span className="font-semibold text-slate-800">{completedSectionsCount}</span> of{" "}
+            {sections.length} sections complete
           </span>
         </div>
       </div>
@@ -94,20 +149,18 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
         {/* Left Column: Editor controls (7 cols on desktop) */}
         <div className="lg:col-span-7 space-y-6">
           {/* Section 0: Candidate Profile Details */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
-            <div className="flex items-center justify-between gap-3 mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                  <User className="size-4 text-blue-600" />
-                  Candidate Profile
-                </h3>
-                <p className="text-xs text-slate-500">
-                  Edit your official name, target headline, and contact info
-                </p>
-              </div>
-              <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
-                Live Document Sync
-              </span>
+          <div
+            id="section-profile"
+            className="scroll-mt-20 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs"
+          >
+            <div className="mb-4">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <User className="size-4 text-blue-600" />
+                Candidate Profile
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Edit your official name, target headline, and contact info
+              </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -163,13 +216,16 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
           </div>
 
           {/* Section 1: Professional Summary */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+          <div
+            id="section-summary"
+            className="scroll-mt-20 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs"
+          >
             <div className="flex items-center justify-between gap-3 mb-3">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
                   Professional Summary
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Tailored to your target job role
                 </p>
               </div>
@@ -192,13 +248,16 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
           </div>
 
           {/* Section 2: Featured GitHub Repositories */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+          <div
+            id="section-projects"
+            className="scroll-mt-20 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs"
+          >
             <div className="flex items-center justify-between gap-3 mb-4">
               <div>
                 <h3 className="text-sm font-bold text-slate-900">
                   Select Featured GitHub Repositories
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Choose 2–4 best repositories ({selectedCount} selected)
                 </p>
               </div>
@@ -226,14 +285,28 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
           </div>
 
           {/* Section 3: Work Experience & Bullets */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
-            <div className="mb-4">
-              <h3 className="text-sm font-bold text-slate-900">
-                Work Experience Highlights
-              </h3>
-              <p className="text-xs text-slate-500">
-                Refine STAR bullet points for maximum impact
-              </p>
+          <div
+            id="section-experience"
+            className="scroll-mt-20 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs"
+          >
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">
+                  Work Experience Highlights
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Choose relevant experiences ({selectedExpCount} selected) and refine STAR bullets
+                </p>
+              </div>
+              <span
+                className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
+                  selectedExpCount > 0
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                }`}
+              >
+                {selectedExpCount} of {resume.experiences.length} selected
+              </span>
             </div>
 
             <div className="space-y-3">
@@ -241,6 +314,8 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
                 <ExperienceItem
                   key={exp.id}
                   experience={exp}
+                  isSelected={exp.isSelected !== false}
+                  onToggle={onToggleExperience}
                   onUpdateBullets={onUpdateExperienceBullets}
                 />
               ))}
@@ -248,14 +323,17 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
           </div>
 
           {/* Section 4: Technical Skills Editor */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs">
+          <div
+            id="section-skills"
+            className="scroll-mt-20 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs"
+          >
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                   <Wrench className="size-4 text-blue-600" />
                   Technical Skills &amp; Competencies
                 </h3>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Edit comma-separated skill keywords per category
                 </p>
               </div>
@@ -291,28 +369,28 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
             </div>
           </div>
 
-          {/* Bottom Action Bar */}
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-xs flex flex-wrap items-center justify-between gap-3 sticky bottom-6 z-20">
-            <div className="flex items-center gap-2">
+          {/* 3. Docked Sticky Footer */}
+          <div className="sticky bottom-0 z-20 -mx-5 sm:-mx-6 px-5 sm:px-6 py-4 bg-white/95 backdrop-blur border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] rounded-b-2xl">
+            <div className="flex items-center gap-2.5">
               {onBackToInput && (
-                <Button
-                  variant="secondary"
-                  size="md"
+                <button
+                  type="button"
                   onClick={onBackToInput}
-                  icon={<ArrowLeft className="size-4" />}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
                 >
-                  Back
-                </Button>
+                  <ArrowLeft className="size-3.5 text-slate-500" />
+                  <span>Back</span>
+                </button>
               )}
 
-              <Button
-                variant="secondary"
-                size="md"
+              <button
+                type="button"
                 onClick={handleRewrite}
-                icon={<Sparkles className="size-4 text-blue-600" />}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition-colors cursor-pointer"
               >
-                Request AI Rewrite
-              </Button>
+                <Sparkles className="size-3.5 text-slate-500" />
+                <span>Rewrite Entire CV</span>
+              </button>
             </div>
 
             <Button
@@ -330,19 +408,68 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
         </div>
 
         {/* Right Column: Sticky Live Resume Preview (5 cols on desktop) */}
-        <div className="lg:col-span-5 lg:sticky lg:top-[90px]">
-          <div className="mb-2.5 flex items-center justify-between px-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+        <div className="lg:col-span-5 lg:sticky lg:top-[74px]">
+          <div className="mb-2.5 flex items-center justify-between px-1 gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 shrink-0">
               Live ATS Preview
             </span>
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+
+            {/* 4c. Zoom Controls */}
+            <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.max(60, z - 10))}
+                disabled={zoom <= 60}
+                className="size-6 flex items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40 cursor-pointer transition-colors"
+                title="Zoom Out"
+              >
+                <ZoomOut className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom(100)}
+                className="px-1.5 py-0.5 text-[11px] font-mono font-medium text-slate-600 hover:bg-slate-100 rounded cursor-pointer transition-colors"
+                title="Reset Zoom to 100%"
+              >
+                {zoom}%
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom((z) => Math.min(150, z + 10))}
+                disabled={zoom >= 150}
+                className="size-6 flex items-center justify-center rounded text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40 cursor-pointer transition-colors"
+                title="Zoom In"
+              >
+                <ZoomIn className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setZoom(zoom === 85 ? 100 : 85)}
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10.5px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800 rounded border-l border-slate-200 cursor-pointer transition-colors"
+                title="Fit to Width (85%)"
+              >
+                <Maximize2 className="size-2.5" />
+                Fit
+              </button>
+            </div>
+
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100 shrink-0">
               <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
               Realtime Synced
             </span>
           </div>
 
-          <div className="max-h-[calc(100vh-140px)] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-100/60 p-3 sm:p-4 shadow-inner">
-            <ResumeDocument resume={resume} />
+          <div className="max-h-[calc(100vh-130px)] overflow-auto rounded-2xl border border-slate-200 bg-slate-100/60 p-3 sm:p-4 shadow-inner">
+            <div
+              style={{
+                transform: `scale(${zoom / 100})`,
+                transformOrigin: "top center",
+                transition: "transform 0.15s ease-out",
+                width: zoom !== 100 ? `${100 * (100 / zoom)}%` : "100%",
+              }}
+            >
+              <ResumeDocument resume={resume} />
+            </div>
           </div>
         </div>
       </div>

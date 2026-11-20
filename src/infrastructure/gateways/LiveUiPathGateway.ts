@@ -30,13 +30,16 @@ function prepareCompactCuratedPayload(raw: any): string {
       isSelected: true,
     }));
 
-  const experiences = (Array.isArray(raw?.experiences) ? raw.experiences : []).map((e: any) => ({
+  const experiences = (Array.isArray(raw?.experiences) ? raw.experiences : [])
+    .filter((e: any) => e && e.isSelected !== false)
+    .map((e: any) => ({
     role: e.role || e.position || "",
     company: e.company || "",
     startDate: e.startDate || e.period || "",
     endDate: e.endDate || "",
     location: e.location || "",
     bulletPoints: Array.isArray(e.bulletPoints) ? e.bulletPoints : (e.description ? [e.description] : []),
+    isSelected: true,
   }));
 
   const education = (Array.isArray(raw?.education) ? raw.education : []).map((edu: any) => ({

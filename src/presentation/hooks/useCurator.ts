@@ -35,6 +35,17 @@ export function useCurator(initialResume: ResumePayload) {
     }));
   }, []);
 
+  const toggleExperience = useCallback((expId: string) => {
+    setResume((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp) =>
+        exp.id === expId
+          ? { ...exp, isSelected: exp.isSelected === false ? true : false }
+          : exp
+      ),
+    }));
+  }, []);
+
   const updateExperienceBullets = useCallback(
     (expId: string, bullets: string[]) => {
       setResume((prev) => ({
@@ -87,6 +98,7 @@ export function useCurator(initialResume: ResumePayload) {
     updateProfile,
     updateSummary,
     toggleProject,
+    toggleExperience,
     updateExperienceBullets,
     updateSkillCategoryItems,
     regenerateSummaryWithAI: requestAIRewrite,

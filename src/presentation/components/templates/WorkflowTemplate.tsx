@@ -55,6 +55,7 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
     updateProfile,
     updateSummary,
     toggleProject,
+    toggleExperience,
     updateExperienceBullets,
     updateSkillCategoryItems,
     regenerateSummaryWithAI,
@@ -71,12 +72,16 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans pb-16">
       <Navbar
-        userName={currentUser?.name || "John Doe"}
-        userEmail={currentUser?.email || "john.doe@company.com"}
-        onSignOut={onSignOut}
+        onBackToInput={currentStep === "curation" ? () => setCurrentStep("input") : undefined}
+        activeProfileName={currentStep === "curation" ? curatedResume.profile.fullName : undefined}
+        activeProfileHeadline={currentStep === "curation" ? curatedResume.profile.headline : undefined}
       />
 
-      <main className="flex-1 w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 pt-8 sm:pt-12">
+      <main
+        className={`flex-1 w-full max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-8 ${
+          currentStep === "curation" ? "pt-5 sm:pt-6" : "pt-8 sm:pt-12"
+        }`}
+      >
         {/* Step 1: Input & Ingestion */}
         {currentStep === "input" && (
           <div className="mx-auto max-w-[840px] transition-all duration-300">
@@ -137,6 +142,7 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
               onUpdateProfile={updateProfile}
               onUpdateSummary={updateSummary}
               onToggleProject={toggleProject}
+              onToggleExperience={toggleExperience}
               onUpdateExperienceBullets={updateExperienceBullets}
               onUpdateSkillCategoryItems={updateSkillCategoryItems}
               onRegenerateSummary={regenerateSummaryWithAI}

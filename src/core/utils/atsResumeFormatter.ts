@@ -11,6 +11,24 @@ export function cleanDisplayUrl(url?: string): string {
   return url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/+$/, "");
 }
 
+export function cleanFullName(name?: string, fallback = "Candidate"): string {
+  if (!name) return fallback;
+  let cleaned = name.trim();
+  // Strip browser notification count badges e.g. "(1) ", "(99+) "
+  cleaned = cleaned.replace(/^\(\d+\+?\)\s*/, "");
+  // Strip notification text e.g. "0 notifications", "1 notification", "5 notifications -"
+  cleaned = cleaned.replace(/^\d+\s+notifications?\s*[-·|–]?\s*/i, "");
+  cleaned = cleaned.replace(/\s*[-·|–]?\s*\d+\s+notifications?$/i, "");
+  cleaned = cleaned.replace(/^(notifications?|\d+\s+notifications?)$/i, "");
+  // Strip platform branding suffixes e.g. " | LinkedIn"
+  cleaned = cleaned.replace(/\s*\|\s*LinkedIn$/i, "");
+  cleaned = cleaned.trim();
+  if (!cleaned || /^(candidate|0 notifications?)$/i.test(cleaned)) {
+    return fallback;
+  }
+  return cleaned;
+}
+
 export function isDummyPhone(phone?: string): boolean {
   if (!phone) return true;
   const p = phone.replace(/[\s\-\+\(\)]/g, "");
@@ -133,6 +151,7 @@ export function cleanExperienceList(experiences: WorkExperience[]): WorkExperien
       endDate: exp.endDate || "Present",
       location,
       bulletPoints: cleanedBullets.length > 0 ? cleanedBullets : ["Contributed to core team initiatives and organizational activities."],
+      isSelected: exp.isSelected !== false,
     };
   });
 }
@@ -140,6 +159,7 @@ export function cleanExperienceList(experiences: WorkExperience[]): WorkExperien
 export function formatCanonicalAtsResume(resume: ResumePayload): ResumePayload {
   const profile = {
     ...resume.profile,
+    fullName: cleanFullName(resume.profile.fullName),
     phone: isDummyPhone(resume.profile.phone) ? undefined : resume.profile.phone,
     linkedinUrl: cleanDisplayUrl(resume.profile.linkedinUrl),
     githubUrl: cleanDisplayUrl(resume.profile.githubUrl),
@@ -148,7 +168,9 @@ export function formatCanonicalAtsResume(resume: ResumePayload): ResumePayload {
       "Accomplished engineering professional with proven expertise in building modern software architectures and automation pipelines.",
   };
 
-  const experiences = cleanExperienceList(resume.experiences || []);
+  const experiences = cleanExperienceList(
+    (resume.experiences || []).filter((e) => e.isSelected !== false)
+  );
 
   const selectedProjects = (resume.projects || [])
     .filter((p) => p.isSelected !== false)
