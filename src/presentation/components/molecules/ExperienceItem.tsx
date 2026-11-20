@@ -1,16 +1,21 @@
 import React, { useState } from "react";
-import { Plus, Trash2, Edit2, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, Edit2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "../atoms/Button";
+import { Checkbox } from "../atoms/Checkbox";
 import type { WorkExperience } from "@/core/entities/ResumePayload";
 
 export interface ExperienceItemProps {
   experience: WorkExperience;
   onUpdateBullets: (expId: string, bullets: string[]) => void;
+  isSelected?: boolean;
+  onToggle?: (id: string) => void;
 }
 
 export const ExperienceItem: React.FC<ExperienceItemProps> = ({
   experience,
   onUpdateBullets,
+  isSelected = true,
+  onToggle,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -47,32 +52,70 @@ export const ExperienceItem: React.FC<ExperienceItemProps> = ({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white transition-shadow">
-      <div
-        className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50/60 rounded-xl"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
-        <div>
-          <div className="flex items-center gap-2">
-            <h4 className="text-sm font-semibold text-slate-900">
-              {experience.role}
-            </h4>
-            <span className="text-slate-400 font-medium">·</span>
-            <span className="text-xs text-slate-600 font-medium">
-              {experience.company}
-            </span>
+    <div
+      className={`rounded-xl border transition-all duration-150 ${
+        isSelected
+          ? "border-slate-200 bg-white shadow-xs"
+          : "border-dashed border-slate-300 bg-slate-50/70 opacity-65"
+      }`}
+    >
+      <div className="flex items-center justify-between p-4 gap-3">
+        <div className="flex items-center gap-3.5 flex-1 min-w-0">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center"
+          >
+            <Checkbox
+              checked={isSelected}
+              onChange={() => onToggle?.(experience.id)}
+              aria-label={`Include ${experience.role} at ${experience.company}`}
+            />
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {experience.startDate} — {experience.endDate || "Present"} ·{" "}
-            {experience.bulletPoints.length} bullets
-          </p>
+
+          <div
+            className="flex-1 min-w-0 cursor-pointer"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4
+                className={`text-sm font-semibold truncate ${
+                  isSelected ? "text-slate-900" : "text-slate-500 line-through"
+                }`}
+              >
+                {experience.role}
+              </h4>
+              <span className="text-slate-400 font-medium">·</span>
+              <span
+                className={`text-xs font-medium truncate ${
+                  isSelected ? "text-slate-600" : "text-slate-400"
+                }`}
+              >
+                {experience.company}
+              </span>
+              {!isSelected && (
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 bg-slate-200/80 px-2 py-0.5 rounded-full">
+                  Excluded
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5 truncate">
+              {experience.startDate} — {experience.endDate || "Present"} ·{" "}
+              {experience.bulletPoints.length} bullets
+            </p>
+          </div>
         </div>
+
         <button
           type="button"
-          className="text-slate-400 hover:text-slate-600 p-1"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer shrink-0"
           aria-label="Toggle section"
         >
-          {isExpanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+          {isExpanded ? (
+            <ChevronUp className="size-4" />
+          ) : (
+            <ChevronDown className="size-4" />
+          )}
         </button>
       </div>
 

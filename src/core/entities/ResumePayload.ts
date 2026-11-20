@@ -18,6 +18,7 @@ export interface WorkExperience {
   endDate?: string;
   location?: string;
   bulletPoints: string[];
+  isSelected?: boolean;
 }
 
 export interface TechnicalProject {
