@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Navbar } from "../organisms/Navbar";
 import { InputForm } from "../organisms/InputForm";
 import { ProgressStepper } from "../organisms/ProgressStepper";
@@ -9,6 +9,12 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 import type { UserSession } from "../../hooks/useAuthSession";
 import type { useCVWorkflow } from "../../hooks/useCVWorkflow";
 import type { useCurator } from "../../hooks/useCurator";
+import { calculateAtsScore } from "@/core/utils/atsScoreCalculator";
+import {
+  RESUME_FORMAT_METRIC,
+  RESUME_METHODOLOGY_METRIC,
+  RESUME_DELIVERY_METRIC,
+} from "@/core/config/resumeMetrics";
 
 export interface WorkflowTemplateProps {
   currentUser: UserSession | null;
@@ -56,6 +62,11 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
   } = curator;
 
   const isFailed = status === "FAILED";
+
+  const atsScore = useMemo(
+    () => calculateAtsScore(curatedResume),
+    [curatedResume]
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans pb-16">
@@ -147,6 +158,10 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
             <DeliveryView
               resume={curatedResume}
               jobId={jobId}
+              atsScore={atsScore}
+              formatMetric={RESUME_FORMAT_METRIC}
+              methodologyMetric={RESUME_METHODOLOGY_METRIC}
+              deliveryMetric={RESUME_DELIVERY_METRIC}
               onDownloadPdf={handleDownloadPdf}
               onBackToCuration={() => setCurrentStep("curation")}
               onCreateAnother={() => setCurrentStep("input")}
