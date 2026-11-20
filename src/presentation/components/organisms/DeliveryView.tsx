@@ -16,11 +16,17 @@ import {
   Eye,
 } from "lucide-react";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
+import type { AtsScoreResult } from "@/core/utils/atsScoreCalculator";
+import type { ResumeMetricCard } from "@/core/config/resumeMetrics";
 
 export interface DeliveryViewProps {
   resume: ResumePayload;
   jobId: string | null;
   pdfUrl?: string | null;
+  atsScore?: AtsScoreResult;
+  formatMetric?: ResumeMetricCard;
+  methodologyMetric?: ResumeMetricCard;
+  deliveryMetric?: ResumeMetricCard;
   onDownloadPdf: () => void;
   onDownloadWord?: () => void;
   onResendEmail?: () => void;
@@ -33,6 +39,10 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
   resume,
   jobId,
   pdfUrl,
+  atsScore,
+  formatMetric,
+  methodologyMetric,
+  deliveryMetric,
   onDownloadPdf,
   onDownloadWord,
   onResendEmail,
@@ -91,32 +101,48 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
             ATS Score
           </p>
-          <p className="mt-1 text-2xl font-black text-emerald-600">98/100</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">Tier A Ready</p>
+          <p className="mt-1 text-2xl font-black text-emerald-600">
+            {atsScore?.label ?? "—"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            {atsScore?.tier ?? ""}
+          </p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
             Format
           </p>
-          <p className="mt-1 text-lg font-bold text-slate-900">Single Column</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">Standard ATS</p>
+          <p className="mt-1 text-lg font-bold text-slate-900">
+            {formatMetric?.label ?? "Single Column"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            {formatMetric?.sublabel ?? "Standard ATS"}
+          </p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
             Methodology
           </p>
-          <p className="mt-1 text-lg font-bold text-slate-900">STAR Format</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">Action Bullets</p>
+          <p className="mt-1 text-lg font-bold text-slate-900">
+            {methodologyMetric?.label ?? "STAR Format"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            {methodologyMetric?.sublabel ?? "Action Bullets"}
+          </p>
         </div>
 
         <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
             Delivery
           </p>
-          <p className="mt-1 text-lg font-bold text-blue-600">UiPath RPA</p>
-          <p className="mt-0.5 text-[11px] text-slate-500">Word &amp; PDF Export</p>
+          <p className="mt-1 text-lg font-bold text-blue-600">
+            {deliveryMetric?.label ?? "UiPath RPA"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            {deliveryMetric?.sublabel ?? "Word & PDF Export"}
+          </p>
         </div>
       </div>
 
