@@ -17,10 +17,12 @@ import {
   ZoomOut,
   Maximize2,
 } from "lucide-react";
-import type { ResumePayload } from "@/core/entities/ResumePayload";
+import type { ResumePayload, ResumeLanguage } from "@/core/entities/ResumePayload";
 
 export interface CurationDashboardProps {
   resume: ResumePayload;
+  language?: ResumeLanguage;
+  onLanguageChange?: (lang: ResumeLanguage) => void;
   onUpdateProfile?: (updates: Partial<ResumePayload["profile"]>) => void;
   onUpdateSummary: (summary: string) => void;
   onToggleProject: (projectId: string) => void;
@@ -37,6 +39,8 @@ export interface CurationDashboardProps {
 
 export const CurationDashboard: React.FC<CurationDashboardProps> = ({
   resume,
+  language,
+  onLanguageChange,
   onUpdateProfile,
   onUpdateSummary,
   onToggleProject,
@@ -409,10 +413,40 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
 
         {/* Right Column: Sticky Live Resume Preview (5 cols on desktop) */}
         <div className="lg:col-span-5 lg:sticky lg:top-[74px]">
-          <div className="mb-2.5 flex items-center justify-between px-1 gap-2">
+          <div className="mb-2.5 flex items-center justify-between px-1 gap-2 flex-wrap sm:flex-nowrap">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 shrink-0">
               Live ATS Preview
             </span>
+
+            {/* Language Selector: ID | EN */}
+            <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-xs text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => onLanguageChange?.("id")}
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded transition-colors cursor-pointer ${
+                  (resume.language || "id") === "id"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+                title="Format CV dalam Bahasa Indonesia (Perusahaan Lokal & BUMN)"
+              >
+                <span>🇮🇩</span>
+                <span>ID</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => onLanguageChange?.("en")}
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded transition-colors cursor-pointer ${
+                  resume.language === "en"
+                    ? "bg-blue-600 text-white shadow-xs"
+                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }`}
+                title="Format CV in English (Global & Multinational)"
+              >
+                <span>🌐</span>
+                <span>EN</span>
+              </button>
+            </div>
 
             {/* 4c. Zoom Controls */}
             <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-xs">
@@ -468,7 +502,7 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
                 width: zoom !== 100 ? `${100 * (100 / zoom)}%` : "100%",
               }}
             >
-              <ResumeDocument resume={resume} />
+              <ResumeDocument resume={resume} language={resume.language} />
             </div>
           </div>
         </div>

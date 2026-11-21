@@ -2,7 +2,8 @@ import React from "react";
 import { FormField } from "../molecules/FormField";
 import { TextInput } from "../atoms/TextInput";
 import { Button } from "../atoms/Button";
-import { Sparkles, Briefcase, Mail } from "lucide-react";
+import { Sparkles, Briefcase, Mail, Globe } from "lucide-react";
+import type { ResumeLanguage } from "@/core/entities/ResumePayload";
 
 const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -40,6 +41,7 @@ export interface InputFormData {
   githubUrl: string;
   targetRole: string;
   recipientEmail: string;
+  language?: ResumeLanguage;
 }
 
 export interface InputFormProps {
@@ -174,6 +176,71 @@ export const InputForm: React.FC<InputFormProps> = ({
               disabled={isLoading}
             />
           </FormField>
+
+          {/* Target Resume Language (ID vs EN) */}
+          <div className="md:col-span-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
+              Target Resume Language
+            </label>
+            <p className="text-xs text-slate-500 mb-2.5">
+              Optimizes action verbs (formal awalan Me- vs past tense), metrics, and ATS headings
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => onChange("language", "id")}
+                className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
+                  (formData.language || "id") === "id"
+                    ? "border-blue-600 bg-blue-50/70 text-blue-900 shadow-xs ring-2 ring-blue-600/20"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                <span className="text-2xl leading-none">🇮🇩</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900">
+                      Bahasa Indonesia
+                    </span>
+                    {(formData.language || "id") === "id" && (
+                      <span className="text-[10.5px] font-semibold text-blue-600 bg-blue-100/70 px-2 py-0.5 rounded-full">
+                        Aktif
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11.5px] text-slate-500 mt-0.5 leading-relaxed">
+                    Format formal standar BUMN, perbankan nasional, dan perusahaan di Indonesia
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onChange("language", "en")}
+                className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
+                  formData.language === "en"
+                    ? "border-blue-600 bg-blue-50/70 text-blue-900 shadow-xs ring-2 ring-blue-600/20"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
+                }`}
+              >
+                <span className="text-2xl leading-none">🌐</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-900">
+                      English
+                    </span>
+                    {formData.language === "en" && (
+                      <span className="text-[10.5px] font-semibold text-blue-600 bg-blue-100/70 px-2 py-0.5 rounded-full">
+                        Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11.5px] text-slate-500 mt-0.5 leading-relaxed">
+                    Standard US/Global ATS format for multinational corporations and remote roles
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="mt-8">

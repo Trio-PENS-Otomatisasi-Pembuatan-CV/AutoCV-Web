@@ -1,17 +1,24 @@
 import React, { useMemo } from "react";
-import type { ResumePayload } from "@/core/entities/ResumePayload";
-import { formatCanonicalAtsResume } from "@/core/utils/atsResumeFormatter";
+import type { ResumePayload, ResumeLanguage } from "@/core/entities/ResumePayload";
+import { formatCanonicalAtsResume, ATS_I18N } from "@/core/utils/atsResumeFormatter";
 
 export interface ResumeDocumentProps {
   resume: ResumePayload;
+  language?: ResumeLanguage;
   className?: string;
 }
 
 export const ResumeDocument: React.FC<ResumeDocumentProps> = ({
   resume,
+  language,
   className = "",
 }) => {
-  const canonical = useMemo(() => formatCanonicalAtsResume(resume), [resume]);
+  const currentLang: ResumeLanguage = language || resume.language || "en";
+  const canonical = useMemo(
+    () => formatCanonicalAtsResume(resume, currentLang),
+    [resume, currentLang]
+  );
+  const t = ATS_I18N[currentLang] || ATS_I18N.en;
   const { profile, experiences, projects, skills, education } = canonical;
 
   const contactItems = [
@@ -72,7 +79,7 @@ export const ResumeDocument: React.FC<ResumeDocumentProps> = ({
       {profile.summary && (
         <section className="mt-4">
           <h2 className="border-b-[1.5px] border-[#0F172A] pb-0.5 text-[11.5px] font-bold uppercase tracking-wider text-[#0F172A]">
-            Professional Summary
+            {t.summary}
           </h2>
           <p className="mt-1 text-xs leading-[1.4] text-[#334155]">
             {profile.summary}
@@ -84,12 +91,12 @@ export const ResumeDocument: React.FC<ResumeDocumentProps> = ({
       {experiences && experiences.length > 0 && (
         <section className="mt-4">
           <h2 className="border-b-[1.5px] border-[#0F172A] pb-0.5 text-[11.5px] font-bold uppercase tracking-wider text-[#0F172A]">
-            Work Experience
+            {t.experience}
           </h2>
           <div className="mt-2 space-y-2.5">
             {experiences.map((exp) => {
               const isLong = (exp.role.length + exp.company.length) > 55;
-              const dateText = exp.startDate || "Present";
+              const dateText = exp.startDate || t.present;
 
               return (
                 <div key={exp.id}>
@@ -149,7 +156,7 @@ export const ResumeDocument: React.FC<ResumeDocumentProps> = ({
       {projects && projects.length > 0 && (
         <section className="mt-4">
           <h2 className="border-b-[1.5px] border-[#0F172A] pb-0.5 text-[11.5px] font-bold uppercase tracking-wider text-[#0F172A]">
-            Featured Technical Projects (#HumanInTheLead)
+            {t.projects}
           </h2>
           <div className="mt-2 space-y-2">
             {projects.map((proj) => {
@@ -188,7 +195,7 @@ export const ResumeDocument: React.FC<ResumeDocumentProps> = ({
       {skills && skills.length > 0 && (
         <section className="mt-4">
           <h2 className="border-b-[1.5px] border-[#0F172A] pb-0.5 text-[11.5px] font-bold uppercase tracking-wider text-[#0F172A]">
-            Technical Skills
+            {t.skills}
           </h2>
           <div className="mt-1.5 space-y-1 text-xs text-[#334155]">
             {skills.map((cat, idx) => (
@@ -205,7 +212,7 @@ export const ResumeDocument: React.FC<ResumeDocumentProps> = ({
       {education && education.length > 0 && (
         <section className="mt-4">
           <h2 className="border-b-[1.5px] border-[#0F172A] pb-0.5 text-[11.5px] font-bold uppercase tracking-wider text-[#0F172A]">
-            Education
+            {t.education}
           </h2>
           <div className="mt-2 space-y-1">
             {education.map((edu, idx) => (
@@ -223,7 +230,7 @@ export const ResumeDocument: React.FC<ResumeDocumentProps> = ({
                 </div>
                 {edu.gpa && (
                   <p className="text-[11px] text-[#64748B] mt-0.5">
-                    GPA: {edu.gpa}
+                    {t.gpa}: {edu.gpa}
                   </p>
                 )}
               </div>

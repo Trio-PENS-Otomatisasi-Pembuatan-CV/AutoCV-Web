@@ -5,7 +5,8 @@ import type { ResumePayload } from "@/core/entities/ResumePayload";
 import type { WorkflowStep } from "../components/organisms/StepSwitcherBar";
 import type { InputFormData } from "../components/organisms/InputForm";
 
-export const DEFAULT_RESUME: ResumePayload = {
+export const DEFAULT_RESUME_EN: ResumePayload = {
+  language: "en",
   profile: {
     fullName: "John Doe",
     headline: "Senior Fullstack Engineer",
@@ -29,6 +30,7 @@ export const DEFAULT_RESUME: ResumePayload = {
         "Mentored 4 engineers and introduced trunk-based development, increasing deployment frequency from weekly to daily.",
         "Designed a Next.js customer portal serving 80k monthly users with 99.95% uptime.",
       ],
+      isSelected: true,
     },
     {
       id: "exp-2",
@@ -40,6 +42,7 @@ export const DEFAULT_RESUME: ResumePayload = {
         "Delivered REST APIs in Go and PostgreSQL for a logistics tracking product used by 120+ enterprise clients.",
         "Reduced cloud infrastructure costs by 28% by containerizing legacy services and right-sizing workloads.",
       ],
+      isSelected: true,
     },
   ],
   projects: [
@@ -92,6 +95,98 @@ export const DEFAULT_RESUME: ResumePayload = {
   ],
 };
 
+export const DEFAULT_RESUME_ID: ResumePayload = {
+  language: "id",
+  profile: {
+    fullName: "John Doe",
+    headline: "Senior Fullstack Engineer",
+    email: "john.doe@example.com",
+    phone: "+62 812-3456-7890",
+    location: "Surabaya, Indonesia",
+    summary:
+      "Fullstack Engineer berpengalaman 5+ tahun dalam merancang arsitektur web terdistribusi, infrastruktur cloud, dan pipeline otomatisasi enterprise. Terbukti mampu menerjemahkan kebutuhan bisnis kompleks menjadi solusi teknis yang tangguh dan terukur.",
+    linkedinUrl: "https://linkedin.com/in/johndoe",
+    githubUrl: "https://github.com/johndoe",
+  },
+  experiences: [
+    {
+      id: "exp-1",
+      company: "PT Inovasi Solusi",
+      role: "Senior Software Engineer",
+      startDate: "2022",
+      endDate: "Sekarang",
+      bulletPoints: [
+        "Memimpin migrasi platform billing monolitik ke 12 microservices berbasis Go pada Kubernetes, memangkas p95 response time sebesar 42%.",
+        "Membimbing 4 engineer dan menerapkan metode trunk-based development, meningkatkan frekuensi deployment dari mingguan menjadi harian.",
+        "Merancang portal pelanggan berbasis Next.js yang melayani 80rb pengguna aktif bulanan dengan uptime 99,95%.",
+      ],
+      isSelected: true,
+    },
+    {
+      id: "exp-2",
+      company: "PT Digital Nusantara",
+      role: "Software Engineer",
+      startDate: "2020",
+      endDate: "2022",
+      bulletPoints: [
+        "Merilis dan menyediakan REST API berbasis Go dan PostgreSQL untuk produk pelacakan logistik yang digunakan oleh 120+ klien enterprise.",
+        "Memangkas biaya infrastruktur cloud sebesar 28% melalui kontainerisasi layanan warisan (legacy) dan penyesuaian kapasitas beban kerja.",
+      ],
+      isSelected: true,
+    },
+  ],
+  projects: [
+    {
+      id: "proj-1",
+      name: "ecommerce-microservice",
+      repoUrl: "https://github.com/johndoe/ecommerce-microservice",
+      stars: 45,
+      language: "Go",
+      techStack: ["Go", "Docker", "RabbitMQ"],
+      starSummary:
+        "Merancang dan membangun layanan inventaris berbasis event-driven berkapasitas 10k+ rpm menggunakan Go dan RabbitMQ, mengurangi latensi checkout sebesar 35%. Menerapkan pipeline deployment nir-henti dengan Docker dan GitHub Actions, memangkas siklus rilis dari 2 jam menjadi 8 menit.",
+      isSelected: true,
+    },
+    {
+      id: "proj-2",
+      name: "autocv-pipeline",
+      repoUrl: "https://github.com/johndoe/autocv-pipeline",
+      stars: 28,
+      language: "TypeScript",
+      techStack: ["TypeScript", "Next.js", "UiPath"],
+      starSummary:
+        "Membangun resume parser otomatis yang menyinkronkan REST API dan mesin RPA, merampingkan proses penyerapan data untuk 500+ kandidat.",
+      isSelected: true,
+    },
+    {
+      id: "proj-3",
+      name: "cloud-metrics-agent",
+      repoUrl: "https://github.com/johndoe/cloud-metrics-agent",
+      stars: 14,
+      language: "Python",
+      techStack: ["Python", "Prometheus", "Grafana"],
+      starSummary:
+        "Mengembangkan pengumpul metrik real-time untuk beban kerja Kubernetes dengan pengiriman notifikasi otomatis.",
+      isSelected: false,
+    },
+  ],
+  skills: [
+    { category: "Languages", items: ["Go", "TypeScript", "Python"] },
+    { category: "Frameworks", items: ["Next.js", "React", "Gin", "Tailwind CSS"] },
+    { category: "Developer Tools", items: ["Docker", "Kubernetes", "Git", "UiPath Studio"] },
+  ],
+  education: [
+    {
+      institution: "Politeknik Elektronika Negeri Surabaya",
+      degree: "Sarjana Terapan Teknik Informatika (S.Tr.Kom.)",
+      graduationYear: "2016 — 2020",
+      gpa: "3.71 / 4.00",
+    },
+  ],
+};
+
+export const DEFAULT_RESUME: ResumePayload = DEFAULT_RESUME_ID;
+
 export function useCVWorkflow() {
   const [currentStep, setCurrentStep] = useState<WorkflowStep>("input");
   const [jobId, setJobId] = useState<string | null>(null);
@@ -108,9 +203,10 @@ export function useCVWorkflow() {
     githubUrl: "https://github.com/johndoe",
     targetRole: "Senior Fullstack Engineer",
     recipientEmail: "john.doe@example.com",
+    language: "id",
   });
 
-  const [resumeData, setResumeData] = useState<ResumePayload>(DEFAULT_RESUME);
+  const [resumeData, setResumeData] = useState<ResumePayload>(DEFAULT_RESUME_ID);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollStartRef = useRef<number>(0);
   const lastStatusRef = useRef<string>("");
@@ -135,14 +231,20 @@ export function useCVWorkflow() {
   );
 
   const handleUseSample = useCallback(() => {
+    const selectedLang = formData.language || "id";
     setFormData({
       linkedinUrl: "https://linkedin.com/in/johndoe",
       githubUrl: "https://github.com/johndoe",
-      targetRole: "Senior Fullstack Engineer / DevOps Engineer",
+      targetRole:
+        selectedLang === "id"
+          ? "Senior Fullstack Engineer / Insinyur Otomasi"
+          : "Senior Fullstack Engineer / DevOps Engineer",
       recipientEmail: "john.doe@example.com",
+      language: selectedLang,
     });
+    setResumeData(selectedLang === "en" ? DEFAULT_RESUME_EN : DEFAULT_RESUME_ID);
     setFormErrors({});
-  }, []);
+  }, [formData.language]);
 
   // Polling logic
   const stopPolling = useCallback(() => {
@@ -262,6 +364,7 @@ export function useCVWorkflow() {
           githubUrl: formData.githubUrl,
           targetRole: formData.targetRole,
           recipientEmail: formData.recipientEmail,
+          language: formData.language || "id",
         });
 
         setJobId(res.jobId);
@@ -282,6 +385,7 @@ export function useCVWorkflow() {
         // Mock-mode fallback simulation for offline frontend dev
         const mockJobId = "ACV-" + Math.floor(1000 + Math.random() * 9000);
         setJobId(mockJobId);
+        setResumeData(formData.language === "en" ? DEFAULT_RESUME_EN : DEFAULT_RESUME_ID);
         setStatus(JobStatus.SCRAPING_LINKEDIN);
         setProgressPercent(25);
 
@@ -339,7 +443,11 @@ export function useCVWorkflow() {
   const handleDownloadPdf = useCallback(async () => {
     if (jobId) {
       try {
-        await downloadCVPdf(jobId, `ATS_Resume_${resumeData.profile.fullName.replace(/\s+/g, "_")}.pdf`);
+        const langCode = (resumeData.language || "id").toUpperCase();
+        await downloadCVPdf(
+          jobId,
+          `ATS_Resume_${resumeData.profile.fullName.replace(/\s+/g, "_")}_${langCode}.pdf`
+        );
         return;
       } catch (e) {
         console.warn("Direct API download failed, falling back to print dialog:", e);

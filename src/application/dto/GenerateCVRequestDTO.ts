@@ -34,6 +34,7 @@ export const GenerateCVRequestSchema = z.object({
     .optional(),
   email: z.string().regex(EMAIL_PATTERN, "Invalid email address").optional(),
   targetRole: z.string().max(100).optional(),
+  language: z.enum(["en", "id"]).optional(),
 });
 
 export type GenerateCVRequestDTO = z.infer<typeof GenerateCVRequestSchema>;

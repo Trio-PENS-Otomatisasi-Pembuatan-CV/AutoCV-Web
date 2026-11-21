@@ -248,12 +248,17 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
         ) : (
           <div>
             <div className="mb-2 flex items-center justify-between text-xs text-slate-400 print:hidden px-2">
-              <span>ATS Document Preview (Standard Letter / A4)</span>
+              <div className="flex items-center gap-2">
+                <span>ATS Document Preview (Standard Letter / A4)</span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-700">
+                  {resume.language === "en" ? "🌐 English" : "🇮🇩 Bahasa Indonesia"}
+                </span>
+              </div>
               <span className="flex items-center gap-1 text-slate-500 font-medium">
                 <ShieldCheck className="size-3.5 text-emerald-600" /> ATS Parsable
               </span>
             </div>
-            <ResumeDocument resume={resume} />
+            <ResumeDocument resume={resume} language={resume.language} />
           </div>
         )}
       </div>

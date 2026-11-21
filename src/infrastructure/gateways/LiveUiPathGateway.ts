@@ -66,6 +66,7 @@ function prepareCompactCuratedPayload(raw: any): string {
     projects: selectedProjects,
     skills,
     education,
+    language: raw?.language || "en",
   };
 
   return JSON.stringify(compact);
@@ -345,6 +346,7 @@ export class LiveUiPathGateway implements IUiPathGateway {
       in_ApprovedResumePayload: compactCuratedJson,
       in_RecipientEmail: job.request?.recipientEmail || job.request?.email || "",
       in_WebhookBaseUrl: webhookBaseUrl,
+      in_Language: (curatedPayload as any)?.language || "en",
     });
 
     const headers: Record<string, string> = {

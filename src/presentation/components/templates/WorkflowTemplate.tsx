@@ -54,6 +54,7 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
     updateSkillCategoryItems,
     regenerateSummaryWithAI,
     requestAIRewrite,
+    setLanguage,
   } = curator;
 
   const isFailed = status === "FAILED";
@@ -128,6 +129,7 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
           <div className="w-full transition-all duration-300">
             <CurationDashboard
               resume={curatedResume}
+              onLanguageChange={setLanguage}
               onUpdateProfile={updateProfile}
               onUpdateSummary={updateSummary}
               onToggleProject={toggleProject}
