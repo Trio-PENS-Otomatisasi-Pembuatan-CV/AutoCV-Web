@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { submitCVJob, getCVJobStatus, approveCuratedCV, downloadCVPdf } from "@/infrastructure/api/cvService";
+import { submitCVJob, getCVJobStatus, approveCuratedCV, downloadCVPdf, sendCVEmail as sendCVEmailApi } from "@/infrastructure/api/cvService";
 import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 import type { WorkflowStep } from "../components/organisms/StepSwitcherBar";
@@ -103,6 +103,11 @@ export function useCVWorkflow() {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof InputFormData, string>>>({});
   const [hasCurated, setHasCurated] = useState<boolean>(false);
 
+  const [emailSentTo, setEmailSentTo] = useState<string | null>(null);
+  const [emailSentAt, setEmailSentAt] = useState<string | null>(null);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [emailSendError, setEmailSendError] = useState<string | null>(null);
+
   const [formData, setFormData] = useState<InputFormData>({
     linkedinUrl: "https://linkedin.com/in/johndoe",
     githubUrl: "https://github.com/johndoe",
@@ -117,14 +122,15 @@ export function useCVWorkflow() {
   const lastStatusChangeRef = useRef<number>(0);
   const pollErrorCountRef = useRef<number>(0);
   const isApprovingRef = useRef<boolean>(false);
+  const emailSentFromWebhookRef = useRef<boolean>(false);
 
   useEffect(() => {
     isApprovingRef.current = isApproving;
   }, [isApproving]);
 
-  const MAX_POLL_DURATION_MS = 4 * 60 * 1000; // 4 minutes total
-  const MAX_NO_STATUS_CHANGE_MS = 180 * 1000; // 3 minutes no status change
-  const MAX_POLL_ERRORS = 10; // consecutive 404/network errors
+  const MAX_POLL_DURATION_MS = 4 * 60 * 1000;
+  const MAX_NO_STATUS_CHANGE_MS = 180 * 1000;
+  const MAX_POLL_ERRORS = 10;
 
   const handleFormFieldChange = useCallback(
     (field: keyof InputFormData, value: string) => {
@@ -144,7 +150,6 @@ export function useCVWorkflow() {
     setFormErrors({});
   }, []);
 
-  // Polling logic
   const stopPolling = useCallback(() => {
     if (pollIntervalRef.current) {
       clearInterval(pollIntervalRef.current);
@@ -165,7 +170,6 @@ export function useCVWorkflow() {
         const elapsed = Date.now() - pollStartRef.current;
         const sinceChange = Date.now() - lastStatusChangeRef.current;
 
-        // Timeout: total duration or no status change
         if (elapsed > MAX_POLL_DURATION_MS || sinceChange > MAX_NO_STATUS_CHANGE_MS) {
           stopPolling();
           setIsSubmitting(false);
@@ -180,7 +184,6 @@ export function useCVWorkflow() {
         try {
           const res = await getCVJobStatus(id);
 
-          // Track status changes
           if (res.status !== lastStatusRef.current) {
             lastStatusRef.current = res.status;
             lastStatusChangeRef.current = Date.now();
@@ -207,6 +210,18 @@ export function useCVWorkflow() {
             setIsApproving(false);
             isApprovingRef.current = false;
             setSubmitError(null);
+
+            if (res.emailSent && res.emailSentAt && !emailSentFromWebhookRef.current) {
+              const sentAddr =
+                formData.recipientEmail ||
+                res.draftData?.profile?.email ||
+                "";
+              if (sentAddr) {
+                setEmailSentTo(sentAddr);
+                setEmailSentAt(res.emailSentAt);
+              }
+            }
+
             setCurrentStep("delivery");
           } else if (res.status === JobStatus.FAILED) {
             stopPolling();
@@ -237,7 +252,6 @@ export function useCVWorkflow() {
     return () => stopPolling();
   }, [stopPolling]);
 
-  // Submit job
   const handleSubmitJob = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -279,7 +293,6 @@ export function useCVWorkflow() {
           );
           return;
         }
-        // Mock-mode fallback simulation for offline frontend dev
         const mockJobId = "ACV-" + Math.floor(1000 + Math.random() * 9000);
         setJobId(mockJobId);
         setStatus(JobStatus.SCRAPING_LINKEDIN);
@@ -296,6 +309,9 @@ export function useCVWorkflow() {
         }, 2400);
 
         setTimeout(() => {
+          setEmailSentTo(formData.recipientEmail);
+          setEmailSentAt(new Date().toISOString());
+          emailSentFromWebhookRef.current = true;
           setStatus(JobStatus.AWAITING_CURATION);
           setProgressPercent(100);
           setIsSubmitting(false);
@@ -307,7 +323,6 @@ export function useCVWorkflow() {
     [formData, startPolling]
   );
 
-  // Approve curation
   const handleApproveCuration = useCallback(
     async (curatedResume: ResumePayload) => {
       try {
@@ -319,7 +334,6 @@ export function useCVWorkflow() {
           await approveCuratedCV(jobId, curatedResume);
           startPolling(jobId);
         } else {
-          // Simulation fallback
           setTimeout(() => {
             setIsApproving(false);
             setCurrentStep("delivery");
@@ -350,6 +364,23 @@ export function useCVWorkflow() {
     }
   }, [jobId, resumeData.profile.fullName]);
 
+  const handleSendEmail = useCallback(async () => {
+    if (!jobId) return;
+    try {
+      setIsSendingEmail(true);
+      setEmailSendError(null);
+      const result = await sendCVEmailApi(jobId, formData.recipientEmail);
+      setEmailSentTo(result.sentTo);
+      setEmailSentAt(new Date().toISOString());
+    } catch (err) {
+      setEmailSendError(
+        err instanceof Error ? err.message : "Failed to send email"
+      );
+    } finally {
+      setIsSendingEmail(false);
+    }
+  }, [jobId, formData.recipientEmail]);
+
   return {
     currentStep,
     setCurrentStep,
@@ -364,10 +395,15 @@ export function useCVWorkflow() {
     resumeData,
     setResumeData,
     hasCurated,
+    emailSentTo,
+    emailSentAt,
+    isSendingEmail,
+    emailSendError,
     handleFormFieldChange,
     handleUseSample,
     handleSubmitJob,
     handleApproveCuration,
     handleDownloadPdf,
+    handleSendEmail,
   };
 }

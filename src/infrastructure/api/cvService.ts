@@ -16,6 +16,14 @@ export interface JobStatusResponse {
   draftData?: ResumePayload;
   downloadUrl?: string;
   errorMessage?: string;
+  emailSent?: boolean;
+  emailSentAt?: string;
+}
+
+export interface SendEmailResult {
+  success: boolean;
+  mode: "LIVE_SMTP" | "SIMULATION";
+  sentTo: string;
 }
 
 export async function submitCVJob(payload: GenerateCVPayload) {
@@ -35,6 +43,16 @@ export async function approveCuratedCV(jobId: string, curatedData: unknown) {
   return apiRequest<{ success: boolean; status: string }>(`/cv/jobs/${jobId}/approve`, {
     method: "POST",
     body: JSON.stringify({ curatedData }),
+  });
+}
+
+export async function sendCVEmail(
+  jobId: string,
+  recipientEmail?: string
+): Promise<SendEmailResult> {
+  return apiRequest<SendEmailResult>(`/cv/jobs/${jobId}/send-email`, {
+    method: "POST",
+    body: JSON.stringify(recipientEmail ? { recipientEmail } : {}),
   });
 }
 
