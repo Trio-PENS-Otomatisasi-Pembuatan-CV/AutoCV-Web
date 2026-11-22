@@ -438,12 +438,8 @@ export class LiveUiPathGateway implements IUiPathGateway {
     }
 
     if (pdfBase64) {
-      const binary = atob(pdfBase64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return new Blob([bytes], { type: "application/pdf" });
+      const buffer = Buffer.from(pdfBase64, "base64");
+      return new Blob([buffer], { type: "application/pdf" });
     }
 
     if (job.downloadUrl && /^https?:\/\//i.test(job.downloadUrl)) {
@@ -455,162 +451,20 @@ export class LiveUiPathGateway implements IUiPathGateway {
     }
 
     if (job.draftData) {
-      const generatedPdfBytes = await generatePdfFromDraft(job.draftData);
-      if (generatedPdfBytes) {
-        const buffer = Buffer.from(generatedPdfBytes);
-        updateJob(jobId, { pdfBase64: buffer.toString("base64") });
-        return new Blob([buffer], { type: "application/pdf" });
-      }
+      const { generateAtsPdf } = await import("@/infrastructure/pdf/PdfGeneratorService");
+      const buffer = await generateAtsPdf(job.draftData);
+      updateJob(jobId, { pdfBase64: buffer.toString("base64") });
+      const readable = new ReadableStream({
+        start(controller) {
+          controller.enqueue(buffer);
+          controller.close();
+        }
+      });
+      return new Response(readable, {
+        headers: { "Content-Type": "application/pdf" },
+      }) as any;
     }
 
     throw new Error("PDF not ready or not found");
   }
-}
-
-async function generatePdfFromDraft(draftData: any): Promise<Uint8Array | null> {
-  const html = buildResumeHtml(draftData);
-  try {
-    const { execSync } = await import("child_process");
-    const chromePath = getChromeExecutable();
-    if (chromePath) {
-      const args = [
-        "--headless=new",
-        "--disable-gpu",
-        "--no-sandbox",
-        "--disable-dev-shm-usage",
-        "--print-to-pdf",
-      ];
-      const result = execSync(`${chromePath} ${args.join(" ")} -- ${html}`, {
-        encoding: "binary",
-        maxBuffer: 100 * 1024 * 1024,
-      });
-      return new Uint8Array(Buffer.from(result, "binary"));
-    }
-  } catch (e) {
-    console.warn("[generatePdfFromDraft] Chrome headless failed:", e);
-  }
-  return createSimplePdfFromDraft(draftData);
-}
-
-function getChromeExecutable(): string | null {
-  const candidates = [
-    process.env.CHROME_BIN,
-    "/usr/bin/google-chrome",
-    "/usr/bin/chromium-browser",
-    "/usr/bin/chromium",
-    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-  ].filter(Boolean);
-  const fs = require("fs");
-  for (const p of candidates) {
-    if (p && fs.existsSync(p)) return p;
-  }
-  return null;
-}
-
-function buildResumeHtml(draftData: any): string {
-  const profile = draftData?.profile || {};
-  const experiences = draftData?.experiences || [];
-  const projects = draftData?.projects || [];
-  const skills = draftData?.skills || [];
-  const education = draftData?.education || [];
-
-  return `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8"/>
-  <style>
-    body{font-family:Calibri,Arial,sans-serif;color:#0F172A;margin:0;padding:24px}
-    .resume{background:#fff;padding:24px}
-    h1{font-size:24px;font-weight:bold;margin:0 0 4px 0}
-    h2{font-size:14px;font-weight:bold;margin:0 0 8px 0;border-bottom:1px solid #0F172A;padding-bottom:4px}
-    .section{margin-top:16px}
-    .item{margin-bottom:8px;font-size:11px}
-    .skills{font-size:11px}
-    .skills span{margin-right:8px}
-  </style>
-</head>
-<body>
-  <div class="resume">
-    <h1>${profile.fullName || "Candidate"}</h1>
-    ${profile.headline ? `<p style="font-size:13px;color:#475569;margin:0 0 8px 0">${profile.headline}</p>` : ""}
-    ${profile.email || profile.phone ? `<p style="font-size:11px;color:#475569;margin:0 0 8px 0">
-      ${profile.email ? profile.email + " | " : ""}${profile.phone || ""} | ${profile.location || ""}
-    </p>` : ""}
-
-    ${profile.summary ? `<div class="section"><h2>Professional Summary</h2><p class="item">${profile.summary}</p></div>` : ""}
-
-    ${experiences.length > 0 ? `<div class="section"><h2>Work Experience</h2>${experiences.map((e: any) => `
-      <div class="item">
-        <strong>${e.role}</strong> — ${e.company}${e.startDate ? " " + e.startDate + (e.endDate ? " - " + e.endDate : " — Present") : ""}
-        <ul style="margin:4px 0 0 0;padding-left:20px">
-          ${(e.bulletPoints || []).map((b: string) => `<li>${b}</li>`).join("")}
-        </ul>
-      </div>`).join("")}</div>` : ""}
-
-    ${projects.length > 0 ? `<div class="section"><h2>Projects</h2>${projects.map((p: any) => `
-      <div class="item">
-        <strong>${p.name}</strong> <span style="font-size:10px;color:#64748B">[${p.techStack?.join(", ") || p.language || ""}]</span>
-        <p style="font-size:10px;margin:4px 0 0 0">${p.starSummary || ""}</p>
-      </div>`).join("")}</div>` : ""}
-
-    ${skills.length > 0 ? `<div class="section"><h2>Skills</h2><div class="skills">${skills.map((s: any) => s.items.join(", ")).join(" | ")}</div></div>` : ""}
-
-    ${education.length > 0 ? `<div class="section"><h2>Education</h2>${education.map((e: any) => `
-      <div class="item"><strong>${e.degree}</strong> — ${e.institution}${e.graduationYear ? " | " + e.graduationYear : ""}</div>`).join("")}</div>` : ""}
-  </div>
-</body>
-</html>`;
-}
-
-function createSimplePdfFromDraft(draftData: any): Uint8Array | null {
-  try {
-    const content = `%PDF-1.4
-1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
-endobj
-2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
-endobj
-3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]
-/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
-endobj
-4 0 obj
-<< /Length 5 0 R >>
-stream
-BT
-/F1 11 tf
-72 720 Td
-(${escapePdf(draftData?.profile?.fullName || "Candidate")} ) Tj
-0 -16 Td
-(ATS Resume - AutoCV Generated ) Tj
-ET
-endstream
-endobj
-5 0 obj
-<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
-endobj
-xref
-0 6
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000266 00000 n 
-0000000428 00000 n 
-trailer
-<< /Size 6 /Root 1 0 R >>
-startxref
-512
-%%EOF`;
-    return new Uint8Array(Buffer.from(content));
-  } catch (e) {
-    console.warn("[createSimplePdfFromDraft] Fallback PDF failed:", e);
-    return null;
-  }
-}
-
-function escapePdf(str: string): string {
-  return str.replace(/\\/g, "\\\\").replace(/\r/g, "\\r").replace(/\n/g, "\\n");
 }
