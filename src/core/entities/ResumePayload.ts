@@ -18,6 +18,7 @@ export interface WorkExperience {
   endDate?: string;
   location?: string;
   bulletPoints: string[];
+  isSelected?: boolean;
 }
 
 export interface TechnicalProject {
@@ -43,10 +44,13 @@ export interface SkillCategory {
   items: string[];
 }
 
+export type ResumeLanguage = "en" | "id";
+
 export interface ResumePayload {
   profile: ProfileInfo;
   experiences: WorkExperience[];
   projects: TechnicalProject[];
   skills: SkillCategory[];
   education?: EducationRecord[];
+  language?: ResumeLanguage;
 }

@@ -2,7 +2,8 @@ import React from "react";
 import { FormField } from "../molecules/FormField";
 import { TextInput } from "../atoms/TextInput";
 import { Button } from "../atoms/Button";
-import { Sparkles, Briefcase, Mail } from "lucide-react";
+import { Sparkles, Briefcase, Mail, Globe } from "lucide-react";
+import type { ResumeLanguage } from "@/core/entities/ResumePayload";
 
 const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -40,6 +41,7 @@ export interface InputFormData {
   githubUrl: string;
   targetRole: string;
   recipientEmail: string;
+  language?: ResumeLanguage;
 }
 
 export interface InputFormProps {
@@ -174,6 +176,52 @@ export const InputForm: React.FC<InputFormProps> = ({
               disabled={isLoading}
             />
           </FormField>
+        </div>
+
+        {/* Resume Language Selection */}
+        <div className="mt-5 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+          <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
+            Bahasa Dokumen Resume (ATS Output Language)
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => onChange("language", "id")}
+              className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                (formData.language || "id") === "id"
+                  ? "bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 text-blue-900"
+                  : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+              }`}
+            >
+              <span className="text-2xl">🇮🇩</span>
+              <div>
+                <p className="text-sm font-semibold">Bahasa Indonesia (Lokal & BUMN)</p>
+                <p className="text-[11px] text-slate-500">
+                  AI menghasilkan seluruh poin pengalaman & ringkasan dalam Bahasa Indonesia baku
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => onChange("language", "en")}
+              className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                formData.language === "en"
+                  ? "bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 text-blue-900"
+                  : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+              }`}
+            >
+              <span className="text-2xl">🌐</span>
+              <div>
+                <p className="text-sm font-semibold">English (Global & MNC)</p>
+                <p className="text-[11px] text-slate-500">
+                  AI generates complete STAR bullet points and summaries in fluent English
+                </p>
+              </div>
+            </button>
+          </div>
         </div>
 
         <div className="mt-8">

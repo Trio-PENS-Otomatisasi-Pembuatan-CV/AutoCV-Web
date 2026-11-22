@@ -1,116 +1,222 @@
-import React from "react";
+import React, { useState } from "react";
+import { ResumeDocument } from "./ResumeDocument";
+import { LivePdfPreviewer } from "./LivePdfPreviewer";
 import { Button } from "../atoms/Button";
-import { Download, Mail, CheckCircle } from "lucide-react";
+import {
+  Download,
+  FileText,
+  Mail,
+  Copy,
+  Check,
+  Printer,
+  ShieldCheck,
+  CheckCircle,
+  ArrowLeft,
+  PlusCircle,
+  Eye,
+} from "lucide-react";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
-import { RESUME_FORMAT_METRIC, RESUME_METHODOLOGY_METRIC, RESUME_DELIVERY_METRIC } from "@/core/config/resumeMetrics";
-import type { ResumeMetricCard } from "@/core/config/resumeMetrics";
 import type { AtsScoreResult } from "@/core/utils/atsScoreCalculator";
+import type { ResumeMetricCard } from "@/core/config/resumeMetrics";
 
 export interface DeliveryViewProps {
   resume: ResumePayload;
   jobId: string | null;
-  atsScore: AtsScoreResult;
-  formatMetric: ResumeMetricCard;
-  methodologyMetric: ResumeMetricCard;
-  deliveryMetric: ResumeMetricCard;
+  pdfUrl?: string | null;
+  atsScore?: AtsScoreResult;
+  formatMetric?: ResumeMetricCard;
+  methodologyMetric?: ResumeMetricCard;
+  deliveryMetric?: ResumeMetricCard;
+  onLanguageChange?: (lang: "id" | "en") => void;
   onDownloadPdf: () => void;
-  onBackToCuration: () => void;
-  onCreateAnother: () => void;
+  onDownloadWord?: () => void;
+  onResendEmail?: () => void;
+  onBackToCuration?: () => void;
+  onCreateAnother?: () => void;
+  isDownloading?: boolean;
   recipientEmail?: string;
   emailSentTo?: string | null;
   emailSentAt?: string | null;
   isSendingEmail?: boolean;
   emailSendError?: string | null;
-  onResendEmail?: () => void;
 }
 
 export const DeliveryView: React.FC<DeliveryViewProps> = ({
   resume,
   jobId,
+  pdfUrl,
   atsScore,
   formatMetric,
   methodologyMetric,
   deliveryMetric,
+  onLanguageChange,
   onDownloadPdf,
+  onDownloadWord,
+  onResendEmail,
   onBackToCuration,
   onCreateAnother,
+  isDownloading = false,
   recipientEmail,
   emailSentTo,
   emailSentAt,
   isSendingEmail,
   emailSendError,
-  onResendEmail,
 }) => {
+  const [copied, setCopied] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [viewMode, setViewMode] = useState<"layout" | "pdf">("layout");
+
+  const effectivePdfUrl = pdfUrl || (jobId ? `/api/cv/jobs/${jobId}/download` : null);
+
+  const handleCopyLink = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleResend = () => {
+    if (onResendEmail) {
+      onResendEmail();
+    }
+    setEmailSent(true);
+    setTimeout(() => setEmailSent(false), 3000);
+  };
+
+  const handlePrint = () => {
+    if (typeof window !== "undefined") {
+      window.print();
+    }
+  };
+
   return (
     <div className="w-full">
-      <div className="mb-7">
-        <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-slate-900">
-          Delivery & Export
+      <section className="text-center print:hidden">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200/60 ring-inset">
+          <CheckCircle className="size-3.5 text-emerald-600" />
+          ATS Verified &amp; #HumanInTheLead Approved
+        </span>
+        <h1 className="mx-auto mt-4 max-w-[680px] text-3xl sm:text-[36px] font-bold tracking-tight text-slate-900">
+          Your ATS-Compliant Resume is Ready
         </h1>
-        <p className="mt-1.5 text-sm text-slate-600">
-          Your ATS-optimized resume is ready. Download, share, or send via email.
+        <p className="mx-auto mt-3 max-w-[620px] text-sm text-slate-600 leading-relaxed">
+          Synthesized from your LinkedIn profile and selected GitHub achievements.
+          Strictly formatted into single-column layout to pass modern Applicant Tracking Systems.
         </p>
+      </section>
+
+      <div className="mx-auto mt-8 grid max-w-[840px] grid-cols-2 sm:grid-cols-4 gap-4 print:hidden">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            ATS Score
+          </p>
+          <p className="mt-1 text-2xl font-black text-emerald-600">
+            {atsScore?.label ?? "—"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            {atsScore?.tier ?? ""}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            Format
+          </p>
+          <p className="mt-1 text-lg font-bold text-slate-900">
+            {formatMetric?.label ?? "Single Column"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            {formatMetric?.sublabel ?? "Standard ATS"}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            Methodology
+          </p>
+          <p className="mt-1 text-lg font-bold text-slate-900">
+            {methodologyMetric?.label ?? "STAR Format"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            {methodologyMetric?.sublabel ?? "Action Bullets"}
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+            Delivery
+          </p>
+          <p className="mt-1 text-lg font-bold text-blue-600">
+            {deliveryMetric?.label ?? "UiPath RPA"}
+          </p>
+          <p className="mt-0.5 text-[11px] text-slate-500">
+            {deliveryMetric?.sublabel ?? "Word & PDF Export"}
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        <div className="lg:col-span-8">
-          <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs">
-            <div className="mb-5">
-              <h3 className="text-sm font-bold text-slate-900 mb-2">
-                Resume Metrics
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
-                <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4">
-                  <div className="text-xs text-emerald-600 font-medium mb-1">ATS Score</div>
-                  <div className="text-2xl font-bold text-emerald-700">{atsScore.label}</div>
-                </div>
-                <div className="rounded-xl bg-blue-50 border border-blue-100 p-4">
-                  <div className="text-xs text-blue-600 font-medium mb-1">Format</div>
-                  <div className="text-sm font-bold text-blue-700">{formatMetric.label}</div>
-                </div>
-                <div className="rounded-xl bg-amber-50 border border-amber-100 p-4">
-                  <div className="text-xs text-amber-600 font-medium mb-1">Methodology</div>
-                  <div className="text-sm font-bold text-amber-700">{methodologyMetric.label}</div>
-                </div>
-              </div>
-            </div>
+      <div className="mx-auto mt-7 max-w-[840px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-wrap items-center justify-between gap-3 print:hidden">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="primary"
+            size="md"
+            onClick={onDownloadPdf}
+            isLoading={isDownloading}
+            icon={<Download className="size-4" />}
+          >
+            Download PDF
+          </Button>
 
-            <div className="mb-5">
-              <h3 className="text-sm font-bold text-slate-900 mb-2">
-                Download & Share
-              </h3>
-              <div className="flex flex-col sm:flex-row items-start gap-3">
-                <Button
-                  variant="primary"
-                  size="md"
-                  onClick={onDownloadPdf}
-                  icon={<Download className="size-4" />}
-                >
-                  Download PDF Resume
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="md"
-                  onClick={onBackToCuration}
-                  icon={<Mail className="size-4" />}
-                >
-                  Edit Resume
-                </Button>
-              </div>
-            </div>
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={handlePrint}
+            icon={<Printer className="size-4" />}
+          >
+            Print / Save
+          </Button>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
-              <p className="text-xs text-slate-500 mb-3 font-medium">
-                ATS Compliance Verification
-              </p>
-              <p className="text-sm text-slate-700">
-                Generated using <span className="font-semibold text-blue-600">{deliveryMetric.label}</span> — {deliveryMetric.sublabel} methodology for optimal compatibility with applicant tracking systems.
-              </p>
-            </div>
+          {onDownloadWord && (
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={onDownloadWord}
+              icon={<FileText className="size-4 text-blue-600" />}
+            >
+              Word (.docx)
+            </Button>
+          )}
+
+          <div className="ml-2 inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode("layout")}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                viewMode === "layout"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              Document View
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("pdf")}
+              className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                viewMode === "pdf"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-500 hover:text-slate-900"
+              }`}
+            >
+              <Eye className="size-3" /> Live PDF Previewer
+            </button>
           </div>
+        </div>
 
-          <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs print:hidden">
-            <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-xs">
+            <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
                   Email Delivery
@@ -144,7 +250,7 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
               <Button
                 variant={emailSentTo ? "secondary" : "primary"}
                 size="sm"
-                onClick={onResendEmail}
+                onClick={handleResend}
                 isLoading={isSendingEmail}
                 icon={<Mail className="size-4" />}
                 disabled={!recipientEmail || isSendingEmail}
@@ -154,54 +260,71 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
               </Button>
             </div>
           </div>
-        </div>
 
-        <div className="lg:col-span-4">
-          <div className="sticky top-[140px] rounded-2xl border border-slate-200 bg-slate-50/60 p-5 sm:p-6 shadow-inner">
-            <h3 className="text-xs font-bold text-slate-600 mb-3">
-              Your Resume Preview
-            </h3>
-            <div className="aspect-[2/3] w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-              <div className="p-4 text-slate-400 text-sm">
-                <p className="font-bold text-slate-900 mb-2">
-                  {resume.profile.fullName}
-                </p>
-                <p className="text-xs mb-2">{resume.profile.headline}</p>
-                <div className="border-t border-slate-200 my-2"></div>
-                <p className="text-[11px] mb-2">
-                  <span className="font-medium">Email:</span> {resume.profile.email}
-                </p>
-                <p className="text-[11px] mb-2">
-                  <span className="font-medium">Location:</span> {resume.profile.location}
-                </p>
-                <p className="text-[11px] line-height-1.4">
-                  {resume.profile.summary?.substring(0, 120)}...
-                </p>
-              </div>
-            </div>
-            <p className="mt-3 text-xs text-slate-500 text-center">
-              Full preview → Curation Studio
-            </p>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleCopyLink}
+            icon={
+              copied ? (
+                <Check className="size-3.5 text-emerald-600" />
+              ) : (
+                <Copy className="size-3.5" />
+              )
+            }
+          >
+            {copied ? "Copied Link!" : "Share Link"}
+          </Button>
         </div>
       </div>
 
-      <div className="mt-8 flex items-center justify-between gap-4">
-        <Button
-          variant="secondary"
-          size="md"
-          onClick={onBackToCuration}
-        >
-          Back to Curation
-        </Button>
-        <Button
-          variant="primary"
-          size="md"
-          onClick={onCreateAnother}
-        >
-          Create Another Resume
-        </Button>
+      <div className="mx-auto mt-4 max-w-[840px] flex items-center justify-between px-2 print:hidden">
+        {onBackToCuration && (
+          <button
+            type="button"
+            onClick={onBackToCuration}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="size-3.5" /> Back to Edit Curation
+          </button>
+        )}
+
+        {onCreateAnother && (
+          <button
+            type="button"
+            onClick={onCreateAnother}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer ml-auto"
+          >
+            <PlusCircle className="size-3.5" /> Create Another Resume
+          </button>
+        )}
+      </div>
+
+      <div className="mx-auto mt-7 max-w-[840px]">
+        {viewMode === "pdf" ? (
+          <LivePdfPreviewer
+            pdfUrl={effectivePdfUrl}
+            candidateName={resume.profile.fullName}
+            onDownloadPdf={onDownloadPdf}
+            isDownloading={isDownloading}
+          />
+        ) : (
+          <div>
+            <div className="mb-2 flex items-center justify-between text-xs text-slate-400 print:hidden px-2">
+              <div className="flex items-center gap-2">
+                <span>ATS Document Preview (Standard Letter / A4)</span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-700">
+                  {resume.language === "id" ? "🇮🇩 Bahasa Indonesia" : "🌐 English"}
+                </span>
+              </div>
+              <span className="flex items-center gap-1 text-slate-500 font-medium">
+                <ShieldCheck className="size-3.5 text-emerald-600" /> ATS Parsable
+              </span>
+            </div>
+            <ResumeDocument resume={resume} language={resume.language} />
+          </div>
+        )}
       </div>
     </div>
   );
-}
+};

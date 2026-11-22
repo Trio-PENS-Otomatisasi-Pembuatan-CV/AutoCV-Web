@@ -1,8 +1,12 @@
 import { useState, useCallback } from "react";
-import type { ResumePayload } from "@/core/entities/ResumePayload";
+import type { ResumePayload, ResumeLanguage } from "@/core/entities/ResumePayload";
+import { translateResumePayload } from "@/core/utils/atsTranslator";
 
 export function useCurator(initialResume: ResumePayload) {
-  const [resume, setResume] = useState<ResumePayload>(initialResume);
+  const [resume, setResume] = useState<ResumePayload>({
+    ...initialResume,
+    language: initialResume.language || "en",
+  });
 
   const updateProfile = useCallback((updates: Partial<ResumePayload["profile"]>) => {
     setResume((prev) => ({
@@ -31,6 +35,17 @@ export function useCurator(initialResume: ResumePayload) {
         proj.id === projectId
           ? { ...proj, isSelected: !proj.isSelected }
           : proj
+      ),
+    }));
+  }, []);
+
+  const toggleExperience = useCallback((expId: string) => {
+    setResume((prev) => ({
+      ...prev,
+      experiences: prev.experiences.map((exp) =>
+        exp.id === expId
+          ? { ...exp, isSelected: exp.isSelected === false ? true : false }
+          : exp
       ),
     }));
   }, []);
@@ -71,22 +86,43 @@ export function useCurator(initialResume: ResumePayload) {
     []
   );
 
+  const setLanguage = useCallback((targetLang: ResumeLanguage) => {
+    setResume((prev) => {
+      const current = prev.language || "en";
+      if (current === targetLang) {
+        return prev;
+      }
+      return translateResumePayload(prev, targetLang);
+    });
+  }, []);
+
   const requestAIRewrite = useCallback(() => {
-    const aiSummaries = [
+    const enSummaries = [
       "Dynamic Senior Fullstack Engineer with 5+ years driving high-concurrency cloud architectures and automation systems. Proven track record reducing infrastructure latency by 42% and architecting resilient microservices.",
       "Results-oriented Software Engineer specializing in Go, TypeScript, and modern cloud ecosystems. Experienced in event-driven systems handling 10k+ rpm and accelerating CI/CD deployment pipelines by 90%.",
       "Fullstack Cloud & RPA Automation Engineer passionate about bridging robotic process automation with intuitive web applications. Adept at designing scalable APIs, leading technical migrations, and mentoring agile engineering teams.",
     ];
-    const randomIndex = Math.floor(Math.random() * aiSummaries.length);
-    updateSummary(aiSummaries[randomIndex]);
-  }, [updateSummary]);
+    const idSummaries = [
+      "Senior Fullstack Engineer berpengalaman 5+ tahun dalam merancang arsitektur cloud berkonkurensi tinggi dan sistem otomatisasi proses. Terbukti berhasil memangkas latensi infrastruktur hingga 42% serta mengarsiteki microservices tangguh.",
+      "Software Engineer berorientasi hasil dengan spesialisasi Go, TypeScript, dan ekosistem modern cloud. Berpengalaman mengelola sistem event-driven berkapasitas 10k+ rpm dan mempercepat pipeline CI/CD hingga 90%.",
+      "Insinyur Otomasi RPA & Fullstack Cloud yang memadukan otomatisasi proses robotik dengan aplikasi web modern. Mahir merancang REST API terukur, memimpin migrasi teknis, dan membimbing tim rekayasa perangkat lunak.",
+    ];
+
+    const currentLang = resume.language || "en";
+    const summaries = currentLang === "id" ? idSummaries : enSummaries;
+    const randomIndex = Math.floor(Math.random() * summaries.length);
+    updateSummary(summaries[randomIndex]);
+  }, [resume.language, updateSummary]);
 
   return {
     curatedResume: resume,
+    language: resume.language || "en",
+    setLanguage,
     setResume,
     updateProfile,
     updateSummary,
     toggleProject,
+    toggleExperience,
     updateExperienceBullets,
     updateSkillCategoryItems,
     regenerateSummaryWithAI: requestAIRewrite,

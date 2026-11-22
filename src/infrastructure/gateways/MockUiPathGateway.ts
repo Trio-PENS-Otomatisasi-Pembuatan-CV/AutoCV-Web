@@ -3,19 +3,20 @@ import type { GenerateCVRequestDTO } from "@/application/dto/GenerateCVRequestDT
 import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 import { createJob, getJob, updateJob } from "@/infrastructure/storage/JobStore";
+import { translateResumePayload } from "@/core/utils/atsTranslator";
 
 function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
   const linkedinUrl = from.linkedinUrl || from.linkedInUrl || "";
   const email = from.recipientEmail || from.email || "";
 
-  return {
+  const baseResume: ResumePayload = {
     profile: {
       fullName: "Jane Mustika Pratama",
       headline: "Fullstack Cloud & AI Engineer",
       email,
       phone: "+62 812-1234-5678",
       location: "Surabaya, Indonesia",
-      summary: "Software Engineer berorientasi solusi membangun apps cloud berskala besar...",
+      summary: "Software Engineer berorientasi solusi membangun apps cloud berskala besar dengan keahlian otomatisasi modern.",
       linkedinUrl,
       githubUrl: from.githubUrl,
     },
@@ -25,11 +26,12 @@ function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
         company: "PT Telko Digital Nusantara",
         role: "Backend Software Engineer",
         startDate: "Jan 2024",
-        endDate: "Present",
+        endDate: "Sekarang",
         bulletPoints: [
           "Merancang arsitektur microservices Node.js 500k transaksi harian.",
           "Optimasi query PostgreSQL, latensi turun dari 450ms ke 85ms.",
         ],
+        isSelected: true,
       },
     ],
     projects: [
@@ -74,12 +76,19 @@ function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
     education: [
       {
         institution: "Politeknik Elektronika Negeri Surabaya",
-        degree: "D4 Teknik Informatika",
+        degree: "Sarjana Terapan Teknik Informatika (S.Tr.Kom.)",
         graduationYear: "2026",
         gpa: "3.85 / 4.00",
       },
     ],
+    language: "id",
   };
+
+  if (from.language === "en") {
+    return translateResumePayload(baseResume, "en");
+  }
+
+  return baseResume;
 }
 
 function getNextStatus(current: JobStatus): JobStatus | null {
