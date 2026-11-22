@@ -5,7 +5,7 @@ import type { ResumePayload } from "@/core/entities/ResumePayload";
 import { createJob, getJob, updateJob } from "@/infrastructure/storage/JobStore";
 import { translateResumePayload } from "@/core/utils/atsTranslator";
 
-function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
+export function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
   const linkedinUrl = from.linkedinUrl || from.linkedInUrl || "";
   const email = from.recipientEmail || from.email || "";
 
@@ -64,6 +64,76 @@ function genMockResume(from: GenerateCVRequestDTO): ResumePayload {
         language: "Go",
         techStack: ["Go", "PostgreSQL"],
         starSummary: "Pipeline batch export CV analytics.",
+        isSelected: true,
+      },
+      {
+        id: "proj4",
+        name: "uipath-workflow-orchestrator",
+        repoUrl: from.githubUrl + "/uipath-workflow-orchestrator",
+        stars: 45,
+        language: "C#",
+        techStack: ["UiPath", "C#", ".NET", "Automation"],
+        starSummary: "Framework orkestrator automasi RPA modular untuk background batch jobs.",
+        isSelected: false,
+      },
+      {
+        id: "proj5",
+        name: "ai-agent-rag-pipeline",
+        repoUrl: from.githubUrl + "/ai-agent-rag-pipeline",
+        stars: 78,
+        language: "Python",
+        techStack: ["Python", "FastAPI", "LangChain", "Qdrant"],
+        starSummary: "RAG pipeline teroptimasi dengan hybrid search dan contextual reranking.",
+        isSelected: false,
+      },
+      {
+        id: "proj6",
+        name: "clean-architecture-nextjs-starter",
+        repoUrl: from.githubUrl + "/clean-architecture-nextjs-starter",
+        stars: 34,
+        language: "TypeScript",
+        techStack: ["Next.js", "TypeScript", "TailwindCSS"],
+        starSummary: "Boilerplate Next.js 15 enterprise menerapkan Domain-Driven Design.",
+        isSelected: false,
+      },
+      {
+        id: "proj7",
+        name: "redis-event-bus",
+        repoUrl: from.githubUrl + "/redis-event-bus",
+        stars: 28,
+        language: "Go",
+        techStack: ["Go", "Redis", "PubSub"],
+        starSummary: "Lightweight message bus berbasis Redis Streams untuk arsitektur event-driven.",
+        isSelected: false,
+      },
+      {
+        id: "proj8",
+        name: "docker-swarm-iac",
+        repoUrl: from.githubUrl + "/docker-swarm-iac",
+        stars: 15,
+        language: "HCL",
+        techStack: ["Terraform", "Docker", "Ansible"],
+        starSummary: "Infrastructure as Code untuk provisioning cluster multi-node self-healing.",
+        isSelected: false,
+      },
+      {
+        id: "proj9",
+        name: "postgres-replica-monitor",
+        repoUrl: from.githubUrl + "/postgres-replica-monitor",
+        stars: 21,
+        language: "Python",
+        techStack: ["Python", "PostgreSQL", "Prometheus"],
+        starSummary: "Real-time WAL replication lag monitoring dan alerting bot.",
+        isSelected: false,
+      },
+      {
+        id: "proj10",
+        name: "graphql-microservices-gateway",
+        repoUrl: from.githubUrl + "/graphql-microservices-gateway",
+        stars: 53,
+        language: "TypeScript",
+        techStack: ["GraphQL", "Apollo", "Node.js"],
+        starSummary: "Federated GraphQL gateway menyatukan downstream domain APIs.",
         isSelected: false,
       },
     ],

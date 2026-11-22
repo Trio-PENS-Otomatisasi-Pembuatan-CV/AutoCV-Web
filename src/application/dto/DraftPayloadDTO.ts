@@ -325,7 +325,7 @@ export function normalizeDraftPayload(raw: any): ResumePayload {
       language,
       techStack,
       starSummary,
-      isSelected: p.isSelected ?? p.is_selected ?? (idx < 5),
+      isSelected: p.isSelected ?? p.is_selected ?? (idx < 3),
     };
   });
 
