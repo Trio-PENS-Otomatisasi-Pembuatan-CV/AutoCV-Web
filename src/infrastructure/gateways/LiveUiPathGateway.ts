@@ -4,6 +4,7 @@ import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
 import { orchestratorAuth } from "./OrchestratorAuthClient";
 import { createJob, getJob, updateJob } from "@/infrastructure/storage/JobStore";
 import { normalizeDraftPayload } from "@/application/dto/DraftPayloadDTO";
+import { genMockResume } from "./MockUiPathGateway";
 import fs from "fs";
 import path from "path";
 
@@ -20,7 +21,6 @@ function prepareCompactCuratedPayload(raw: any): string {
   const rawProjects = raw?.projects || raw?.repositories || [];
   const selectedProjects = (Array.isArray(rawProjects) ? rawProjects : [])
     .filter((p: any) => p && p.isSelected !== false)
-    .slice(0, 5)
     .map((p: any) => ({
       name: p.name || "",
       techStack: p.techStack || (p.language ? [p.language] : []),
@@ -249,10 +249,16 @@ export class LiveUiPathGateway implements IUiPathGateway {
             }
           } else if (orchJob.State === "Successful") {
             if (orchJob.OutputArguments) {
-              const outArgs =
-                typeof orchJob.OutputArguments === "string"
-                  ? JSON.parse(orchJob.OutputArguments)
-                  : orchJob.OutputArguments;
+              let outArgs: any = {};
+              if (typeof orchJob.OutputArguments === "string" && orchJob.OutputArguments.trim().length > 0) {
+                try {
+                  outArgs = JSON.parse(orchJob.OutputArguments);
+                } catch (e) {
+                  console.warn("[LiveUiPathGateway] Could not parse OutputArguments JSON:", e);
+                }
+              } else if (typeof orchJob.OutputArguments === "object" && orchJob.OutputArguments !== null) {
+                outArgs = orchJob.OutputArguments;
+              }
 
               // Check if Job 2 is complete (out_JobStatus === "COMPLETED" or PDF path present or job in GENERATING_PDF)
               if (
@@ -278,12 +284,26 @@ export class LiveUiPathGateway implements IUiPathGateway {
                 });
               } else if (outArgs.out_JobStatus === "CURATING" || outArgs.out_DraftResumePayload) {
                 // Job 1 finished: Draft payload ready for curation
-                const rawDraft =
-                  typeof outArgs.out_DraftResumePayload === "string"
-                    ? JSON.parse(outArgs.out_DraftResumePayload)
-                    : outArgs.out_DraftResumePayload;
+                let rawDraft: any = null;
+                const rawPayload = outArgs.out_DraftResumePayload;
 
-                const normalized = normalizeDraftPayload(rawDraft);
+                if (typeof rawPayload === "string" && rawPayload.trim().length > 0) {
+                  try {
+                    rawDraft = JSON.parse(rawPayload);
+                  } catch (parseErr) {
+                    console.warn("[LiveUiPathGateway] Could not parse out_DraftResumePayload as JSON:", parseErr);
+                  }
+                } else if (typeof rawPayload === "object" && rawPayload !== null) {
+                  rawDraft = rawPayload;
+                }
+
+                // If robot returned an empty or invalid payload, safely fallback to existing webhook data or sample generator
+                const draftToUse =
+                  rawDraft ||
+                  job.draftData ||
+                  (job.request ? genMockResume(job.request) : normalizeDraftPayload({}));
+
+                const normalized = normalizeDraftPayload(draftToUse);
                 updateJob(jobId, {
                   status: JobStatus.AWAITING_CURATION,
                   progress: 75,

@@ -7,6 +7,7 @@ import { TextInput } from "../atoms/TextInput";
 import {
   Sparkles,
   CheckCircle2,
+  AlertTriangle,
   ArrowLeft,
   Wrench,
   User,
@@ -262,19 +263,40 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
                   Select Featured GitHub Repositories
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Choose 2–4 best repositories ({selectedCount} selected)
+                  Checklist repositori proyek ({selectedCount} of {resume.projects.length} dipilih)
                 </p>
               </div>
               <span
                 className={`text-xs font-semibold px-2.5 py-0.5 rounded-full ${
-                  selectedCount >= 2 && selectedCount <= 4
+                  selectedCount > 4
+                    ? "bg-amber-100 text-amber-800 border border-amber-300"
+                    : selectedCount >= 1 && selectedCount <= 4
                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    : "bg-amber-50 text-amber-700 border border-amber-200"
+                    : "bg-rose-50 text-rose-700 border border-rose-200"
                 }`}
               >
-                {selectedCount} of {resume.projects.length} selected
+                {selectedCount > 4
+                  ? `${selectedCount} of ${resume.projects.length} selected (> 4 dipilih)`
+                  : selectedCount === 0
+                  ? "Pilih minimal 1 repository"
+                  : `${selectedCount} of ${resume.projects.length} selected (Optimal)`}
               </span>
             </div>
+
+            {/* Warning Banner if more than 4 repositories are checked */}
+            {selectedCount > 4 && (
+              <div className="mb-4 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50/90 p-3.5 text-xs text-amber-900 transition-all">
+                <AlertTriangle className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
+                <div className="space-y-0.5">
+                  <p className="font-semibold text-amber-900">
+                    Perhatian: {selectedCount} repositori dipilih (Melebihi rekomendasi 4 proyek)
+                  </p>
+                  <p className="text-amber-700 leading-relaxed">
+                    Memilih lebih dari 4 repositori dapat membuat resume melebihi 2 halaman dan kurang optimal untuk sistem ATS. Anda tetap dapat melanjutkan jika ingin menampilkan seluruh repositori ini.
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 gap-3">
               {resume.projects.map((project) => (
