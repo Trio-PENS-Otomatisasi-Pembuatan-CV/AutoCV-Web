@@ -185,7 +185,7 @@ export const DEFAULT_RESUME_ID: ResumePayload = {
   ],
 };
 
-export const DEFAULT_RESUME: ResumePayload = DEFAULT_RESUME_ID;
+export const DEFAULT_RESUME: ResumePayload = DEFAULT_RESUME_EN;
 
 export function useCVWorkflow() {
   const [currentStep, setCurrentStep] = useState<WorkflowStep>("input");
@@ -206,7 +206,7 @@ export function useCVWorkflow() {
     language: "id",
   });
 
-  const [resumeData, setResumeData] = useState<ResumePayload>(DEFAULT_RESUME_ID);
+  const [resumeData, setResumeData] = useState<ResumePayload>(DEFAULT_RESUME_EN);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollStartRef = useRef<number>(0);
   const lastStatusRef = useRef<string>("");
@@ -231,20 +231,16 @@ export function useCVWorkflow() {
   );
 
   const handleUseSample = useCallback(() => {
-    const selectedLang = formData.language || "id";
     setFormData({
       linkedinUrl: "https://linkedin.com/in/johndoe",
       githubUrl: "https://github.com/johndoe",
-      targetRole:
-        selectedLang === "id"
-          ? "Senior Fullstack Engineer / Insinyur Otomasi"
-          : "Senior Fullstack Engineer / DevOps Engineer",
+      targetRole: "Senior Fullstack Engineer",
       recipientEmail: "john.doe@example.com",
-      language: selectedLang,
+      language: "en",
     });
-    setResumeData(selectedLang === "en" ? DEFAULT_RESUME_EN : DEFAULT_RESUME_ID);
+    setResumeData(DEFAULT_RESUME_EN);
     setFormErrors({});
-  }, [formData.language]);
+  }, []);
 
   // Polling logic
   const stopPolling = useCallback(() => {
@@ -385,7 +381,7 @@ export function useCVWorkflow() {
         // Mock-mode fallback simulation for offline frontend dev
         const mockJobId = "ACV-" + Math.floor(1000 + Math.random() * 9000);
         setJobId(mockJobId);
-        setResumeData(formData.language === "en" ? DEFAULT_RESUME_EN : DEFAULT_RESUME_ID);
+        setResumeData(DEFAULT_RESUME_EN);
         setStatus(JobStatus.SCRAPING_LINKEDIN);
         setProgressPercent(25);
 

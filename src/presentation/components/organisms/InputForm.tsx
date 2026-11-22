@@ -176,70 +176,51 @@ export const InputForm: React.FC<InputFormProps> = ({
               disabled={isLoading}
             />
           </FormField>
+        </div>
 
-          {/* Target Resume Language (ID vs EN) */}
-          <div className="md:col-span-2">
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
-              Target Resume Language
-            </label>
-            <p className="text-xs text-slate-500 mb-2.5">
-              Optimizes action verbs (formal awalan Me- vs past tense), metrics, and ATS headings
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => onChange("language", "id")}
-                className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
-                  (formData.language || "id") === "id"
-                    ? "border-blue-600 bg-blue-50/70 text-blue-900 shadow-xs ring-2 ring-blue-600/20"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                }`}
-              >
-                <span className="text-2xl leading-none">🇮🇩</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-900">
-                      Bahasa Indonesia
-                    </span>
-                    {(formData.language || "id") === "id" && (
-                      <span className="text-[10.5px] font-semibold text-blue-600 bg-blue-100/70 px-2 py-0.5 rounded-full">
-                        Aktif
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11.5px] text-slate-500 mt-0.5 leading-relaxed">
-                    Format formal standar BUMN, perbankan nasional, dan perusahaan di Indonesia
-                  </p>
-                </div>
-              </button>
+        {/* Resume Language Selection */}
+        <div className="mt-5 p-4 rounded-xl bg-slate-50 border border-slate-200/80">
+          <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
+            Bahasa Dokumen Resume (ATS Output Language)
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => onChange("language", "id")}
+              className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                (formData.language || "id") === "id"
+                  ? "bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 text-blue-900"
+                  : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+              }`}
+            >
+              <span className="text-2xl">🇮🇩</span>
+              <div>
+                <p className="text-sm font-semibold">Bahasa Indonesia (Lokal & BUMN)</p>
+                <p className="text-[11px] text-slate-500">
+                  AI menghasilkan seluruh poin pengalaman & ringkasan dalam Bahasa Indonesia baku
+                </p>
+              </div>
+            </button>
 
-              <button
-                type="button"
-                onClick={() => onChange("language", "en")}
-                className={`flex items-start gap-3 rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
-                  formData.language === "en"
-                    ? "border-blue-600 bg-blue-50/70 text-blue-900 shadow-xs ring-2 ring-blue-600/20"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
-                }`}
-              >
-                <span className="text-2xl leading-none">🌐</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-900">
-                      English
-                    </span>
-                    {formData.language === "en" && (
-                      <span className="text-[10.5px] font-semibold text-blue-600 bg-blue-100/70 px-2 py-0.5 rounded-full">
-                        Active
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-[11.5px] text-slate-500 mt-0.5 leading-relaxed">
-                    Standard US/Global ATS format for multinational corporations and remote roles
-                  </p>
-                </div>
-              </button>
-            </div>
+            <button
+              type="button"
+              disabled={isLoading}
+              onClick={() => onChange("language", "en")}
+              className={`flex items-center gap-3 p-3 rounded-lg border text-left transition-all cursor-pointer ${
+                formData.language === "en"
+                  ? "bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 text-blue-900"
+                  : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+              }`}
+            >
+              <span className="text-2xl">🌐</span>
+              <div>
+                <p className="text-sm font-semibold">English (Global & MNC)</p>
+                <p className="text-[11px] text-slate-500">
+                  AI generates complete STAR bullet points and summaries in fluent English
+                </p>
+              </div>
+            </button>
           </div>
         </div>
 

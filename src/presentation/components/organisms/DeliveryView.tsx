@@ -21,6 +21,7 @@ export interface DeliveryViewProps {
   resume: ResumePayload;
   jobId: string | null;
   pdfUrl?: string | null;
+  onLanguageChange?: (lang: "id" | "en") => void;
   onDownloadPdf: () => void;
   onDownloadWord?: () => void;
   onResendEmail?: () => void;
@@ -33,6 +34,7 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
   resume,
   jobId,
   pdfUrl,
+  onLanguageChange,
   onDownloadPdf,
   onDownloadWord,
   onResendEmail,
@@ -251,7 +253,7 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
               <div className="flex items-center gap-2">
                 <span>ATS Document Preview (Standard Letter / A4)</span>
                 <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-700">
-                  {resume.language === "en" ? "🌐 English" : "🇮🇩 Bahasa Indonesia"}
+                  {resume.language === "id" ? "🇮🇩 Bahasa Indonesia" : "🌐 English"}
                 </span>
               </div>
               <span className="flex items-center gap-1 text-slate-500 font-medium">

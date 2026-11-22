@@ -418,36 +418,6 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
               Live ATS Preview
             </span>
 
-            {/* Language Selector: ID | EN */}
-            <div className="flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-xs text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => onLanguageChange?.("id")}
-                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded transition-colors cursor-pointer ${
-                  (resume.language || "id") === "id"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                }`}
-                title="Format CV dalam Bahasa Indonesia (Perusahaan Lokal & BUMN)"
-              >
-                <span>🇮🇩</span>
-                <span>ID</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onLanguageChange?.("en")}
-                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded transition-colors cursor-pointer ${
-                  resume.language === "en"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-                }`}
-                title="Format CV in English (Global & Multinational)"
-              >
-                <span>🌐</span>
-                <span>EN</span>
-              </button>
-            </div>
-
             {/* 4c. Zoom Controls */}
             <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-0.5 shadow-xs">
               <button

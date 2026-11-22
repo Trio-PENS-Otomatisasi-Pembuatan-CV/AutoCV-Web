@@ -130,9 +130,11 @@ export class LiveUiPathGateway implements IUiPathGateway {
       recipientEmail: request.recipientEmail || request.email || "",
       in_TargetJobRole: request.targetRole || "General Tech Professional",
       targetRole: request.targetRole || "General Tech Professional",
+      in_Language: request.language || "id",
+      language: request.language || "id",
       in_WebhookBaseUrl: webhookBaseUrl,
       webhookBaseUrl,
-      in_UseMockFallback: true,
+      in_UseMockFallback: false,
       in_RequireManualApproval: true,
     });
 

@@ -6,6 +6,7 @@ import type {
   SkillCategory,
   EducationRecord,
 } from "@/core/entities/ResumePayload";
+import { translateResumePayload } from "./atsTranslator";
 
 export const ATS_I18N: Record<
   ResumeLanguage,
@@ -200,9 +201,13 @@ export function cleanExperienceList(experiences: WorkExperience[]): WorkExperien
 }
 
 export function formatCanonicalAtsResume(
-  resume: ResumePayload,
-  lang: ResumeLanguage = resume.language || "en"
+  inputResume: ResumePayload,
+  lang: ResumeLanguage = inputResume.language || "en"
 ): ResumePayload {
+  const resume =
+    inputResume.language && inputResume.language !== lang
+      ? translateResumePayload(inputResume, lang)
+      : inputResume;
   const t = ATS_I18N[lang] || ATS_I18N.en;
   const profile = {
     ...resume.profile,

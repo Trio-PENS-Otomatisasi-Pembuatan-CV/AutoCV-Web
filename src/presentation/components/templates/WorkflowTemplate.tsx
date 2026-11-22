@@ -155,6 +155,7 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
             <DeliveryView
               resume={curatedResume}
               jobId={jobId}
+              onLanguageChange={setLanguage}
               onDownloadPdf={handleDownloadPdf}
               onBackToCuration={() => setCurrentStep("curation")}
               onCreateAnother={() => setCurrentStep("input")}
