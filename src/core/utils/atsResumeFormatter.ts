@@ -1,10 +1,54 @@
 import type {
   ResumePayload,
+  ResumeLanguage,
   WorkExperience,
   TechnicalProject,
   SkillCategory,
   EducationRecord,
 } from "@/core/entities/ResumePayload";
+import { translateResumePayload } from "./atsTranslator";
+
+export const ATS_I18N: Record<
+  ResumeLanguage,
+  {
+    summary: string;
+    experience: string;
+    projects: string;
+    skills: string;
+    education: string;
+    present: string;
+    defaultSummary: string;
+    defaultExpBullet: string;
+    gpa: string;
+  }
+> = {
+  en: {
+    summary: "Professional Summary",
+    experience: "Work Experience",
+    projects: "Featured Technical Projects",
+    skills: "Technical Skills",
+    education: "Education",
+    present: "Present",
+    defaultSummary:
+      "Accomplished engineering professional with proven expertise in building modern software architectures and automation pipelines.",
+    defaultExpBullet:
+      "Contributed to core team initiatives and organizational activities.",
+    gpa: "GPA",
+  },
+  id: {
+    summary: "Ringkasan Profesional",
+    experience: "Pengalaman Kerja",
+    projects: "Proyek Teknis Pilihan",
+    skills: "Keahlian Teknis & Kompetensi",
+    education: "Pendidikan",
+    present: "Sekarang",
+    defaultSummary:
+      "Profesional rekayasa perangkat lunak berpengalaman dengan keahlian teruji dalam membangun arsitektur sistem modern dan otomatisasi proses.",
+    defaultExpBullet:
+      "Berkontribusi pada inisiatif strategis tim dan operasional teknis organisasi.",
+    gpa: "IPK",
+  },
+};
 
 export function cleanDisplayUrl(url?: string): string {
   if (!url) return "";
@@ -156,21 +200,37 @@ export function cleanExperienceList(experiences: WorkExperience[]): WorkExperien
   });
 }
 
-export function formatCanonicalAtsResume(resume: ResumePayload): ResumePayload {
+export function formatCanonicalAtsResume(
+  inputResume: ResumePayload,
+  lang: ResumeLanguage = inputResume.language || "en"
+): ResumePayload {
+  const resume =
+    inputResume.language && inputResume.language !== lang
+      ? translateResumePayload(inputResume, lang)
+      : inputResume;
+  const t = ATS_I18N[lang] || ATS_I18N.en;
   const profile = {
     ...resume.profile,
     fullName: cleanFullName(resume.profile.fullName),
     phone: isDummyPhone(resume.profile.phone) ? undefined : resume.profile.phone,
     linkedinUrl: cleanDisplayUrl(resume.profile.linkedinUrl),
     githubUrl: cleanDisplayUrl(resume.profile.githubUrl),
-    summary:
-      resume.profile.summary ||
-      "Accomplished engineering professional with proven expertise in building modern software architectures and automation pipelines.",
+    summary: resume.profile.summary || t.defaultSummary,
   };
 
   const experiences = cleanExperienceList(
     (resume.experiences || []).filter((e) => e.isSelected !== false)
-  );
+  ).map((exp) => ({
+    ...exp,
+    startDate:
+      lang === "id"
+        ? (exp.startDate || "Sekarang").replace(/Present/gi, "Sekarang")
+        : exp.startDate,
+    endDate:
+      lang === "id"
+        ? (exp.endDate || "Sekarang").replace(/Present/gi, "Sekarang")
+        : exp.endDate,
+  }));
 
   const selectedProjects = (resume.projects || [])
     .filter((p) => p.isSelected !== false)

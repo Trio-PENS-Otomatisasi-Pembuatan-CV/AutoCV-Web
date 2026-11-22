@@ -7,6 +7,7 @@ export interface GenerateCVPayload {
   githubUrl: string;
   targetRole?: string;
   recipientEmail: string;
+  language?: "en" | "id";
 }
 
 export interface JobStatusResponse {

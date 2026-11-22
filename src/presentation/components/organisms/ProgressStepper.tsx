@@ -166,7 +166,7 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
           <div className="flex-1">
             <p className="font-medium text-slate-800">{getStatusDetail()}</p>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              Host: <strong className="text-slate-600 font-medium">ARUL-NITRO</strong> · Target Role: ATS Resume Engine · Cloud Orchestrator Dual-Sync
+              Host: <strong className="text-slate-600 font-medium">AutoCV Cloud Orchestrator (LAPTOP-L6K57F1B)</strong> · Target Role: ATS Resume Engine · Cloud Orchestrator Dual-Sync
             </p>
           </div>
         </div>

@@ -2,6 +2,7 @@ import { z } from "zod";
 import { cleanFullName } from "@/core/utils/atsResumeFormatter";
 import type {
   ResumePayload,
+  ResumeLanguage,
   EducationRecord,
   SkillCategory,
   TechnicalProject,
@@ -93,8 +94,18 @@ export const DraftPayloadSchema = z
     projects: z.array(ProjectSchema).optional(),
     repositories: z.array(ProjectSchema).optional(),
     skills: z.union([z.array(SkillCategorySchema), z.record(z.string(), z.any())]).optional(),
-    education: z.array(EducationSchema).optional(),
-    educations: z.array(EducationSchema).optional(),
+    education: z
+      .union([
+        z.array(EducationSchema),
+        z.record(z.string(), z.any()),
+      ])
+      .optional(),
+    educations: z
+      .union([
+        z.array(EducationSchema),
+        z.record(z.string(), z.any()),
+      ])
+      .optional(),
   })
   .passthrough()
   .refine(
@@ -346,7 +357,12 @@ export function normalizeDraftPayload(raw: any): ResumePayload {
   }
 
   // Education
-  const rawEdus: any[] = pick(raw?.education, raw?.educations, linkedIn.education) ?? [];
+  const pickEdu = pick(raw?.education, raw?.educations, linkedIn.education);
+  const rawEdus: any[] = Array.isArray(pickEdu)
+    ? pickEdu
+    : pickEdu && typeof pickEdu === "object"
+    ? [pickEdu]
+    : [];
   const education: EducationRecord[] = rawEdus.map((edu) => ({
     institution: pickStr(edu.institution),
     degree: pickStr(edu.degree),
@@ -360,5 +376,6 @@ export function normalizeDraftPayload(raw: any): ResumePayload {
     projects,
     skills,
     education,
+    language: (raw?.language as ResumeLanguage) || "en",
   };
 }

@@ -1,4 +1,11 @@
 export function resolveApiUrl(endpoint: string): string {
+  // If running in browser, ALWAYS use relative path ("/api/...") so it hits the current origin
+  // without CORS or stale domain mismatch issues.
+  if (typeof window !== "undefined") {
+    const clean = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+    return clean.startsWith("/api/") ? clean : `/api${clean}`;
+  }
+
   const envBase =
     (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_BASE_URL) || "";
   const cleanEndpoint = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;

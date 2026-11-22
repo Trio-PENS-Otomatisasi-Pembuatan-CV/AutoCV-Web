@@ -17,10 +17,12 @@ import {
   ZoomOut,
   Maximize2,
 } from "lucide-react";
-import type { ResumePayload } from "@/core/entities/ResumePayload";
+import type { ResumePayload, ResumeLanguage } from "@/core/entities/ResumePayload";
 
 export interface CurationDashboardProps {
   resume: ResumePayload;
+  language?: ResumeLanguage;
+  onLanguageChange?: (lang: ResumeLanguage) => void;
   onUpdateProfile?: (updates: Partial<ResumePayload["profile"]>) => void;
   onUpdateSummary: (summary: string) => void;
   onToggleProject: (projectId: string) => void;
@@ -37,6 +39,8 @@ export interface CurationDashboardProps {
 
 export const CurationDashboard: React.FC<CurationDashboardProps> = ({
   resume,
+  language,
+  onLanguageChange,
   onUpdateProfile,
   onUpdateSummary,
   onToggleProject,
@@ -409,7 +413,7 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
 
         {/* Right Column: Sticky Live Resume Preview (5 cols on desktop) */}
         <div className="lg:col-span-5 lg:sticky lg:top-[74px]">
-          <div className="mb-2.5 flex items-center justify-between px-1 gap-2">
+          <div className="mb-2.5 flex items-center justify-between px-1 gap-2 flex-wrap sm:flex-nowrap">
             <span className="text-xs font-bold uppercase tracking-wider text-slate-500 shrink-0">
               Live ATS Preview
             </span>
@@ -468,7 +472,7 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
                 width: zoom !== 100 ? `${100 * (100 / zoom)}%` : "100%",
               }}
             >
-              <ResumeDocument resume={resume} />
+              <ResumeDocument resume={resume} language={resume.language} />
             </div>
           </div>
         </div>
