@@ -5,6 +5,7 @@ export interface SendCVEmailOptions {
   recipientEmail: string;
   candidateName: string;
   baseUrl: string;
+  pdfBase64?: string;
 }
 
 export interface SendCVEmailResult {
@@ -16,7 +17,7 @@ export interface SendCVEmailResult {
 export async function sendCVEmail(
   opts: SendCVEmailOptions
 ): Promise<SendCVEmailResult> {
-  const { jobId, recipientEmail, candidateName, baseUrl } = opts;
+  const { jobId, recipientEmail, candidateName, baseUrl, pdfBase64 } = opts;
 
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
@@ -28,7 +29,8 @@ export async function sendCVEmail(
 
   if (!isLive) {
     console.log(
-      `[EmailService] SIMULATION — skipping real send to ${recipientEmail}. Link: ${downloadUrl}`
+      `[EmailService] SIMULATION — skipping real send to ${recipientEmail}. Link: ${downloadUrl}` +
+        (pdfBase64 ? ` (would also attach PDF: ~${Math.round(pdfBase64.length * 0.75)} KB)` : "")
     );
     return { success: true, mode: "SIMULATION", sentTo: recipientEmail };
   }
@@ -40,11 +42,20 @@ export async function sendCVEmail(
     auth: { user: smtpUser, pass: smtpPass },
   });
 
+  const attachment = pdfBase64
+    ? {
+        filename: `ATS_Resume_${candidateName.replace(/\s+/g, "_")}.pdf`,
+        content: Buffer.from(pdfBase64, "base64"),
+        contentType: "application/pdf",
+      }
+    : undefined;
+
   await transporter.sendMail({
     from: `"AutoCV System" <${smtpUser}>`,
     to: recipientEmail,
     subject: `[AutoCV] Your ATS-Optimized Resume is Ready — ${candidateName}`,
     html: buildEmailHtml({ candidateName, downloadUrl }),
+    attachments: attachment ? [attachment] : undefined,
   });
 
   return { success: true, mode: "LIVE_SMTP", sentTo: recipientEmail };
