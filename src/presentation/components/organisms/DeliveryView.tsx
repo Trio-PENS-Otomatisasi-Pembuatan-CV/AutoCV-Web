@@ -34,6 +34,11 @@ export interface DeliveryViewProps {
   onBackToCuration?: () => void;
   onCreateAnother?: () => void;
   isDownloading?: boolean;
+  recipientEmail?: string;
+  emailSentTo?: string | null;
+  emailSentAt?: string | null;
+  isSendingEmail?: boolean;
+  emailSendError?: string | null;
 }
 
 export const DeliveryView: React.FC<DeliveryViewProps> = ({
@@ -51,6 +56,11 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
   onBackToCuration,
   onCreateAnother,
   isDownloading = false,
+  recipientEmail,
+  emailSentTo,
+  emailSentAt,
+  isSendingEmail,
+  emailSendError,
 }) => {
   const [copied, setCopied] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
@@ -82,7 +92,6 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
 
   return (
     <div className="w-full">
-      {/* Header section */}
       <section className="text-center print:hidden">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200/60 ring-inset">
           <CheckCircle className="size-3.5 text-emerald-600" />
@@ -97,7 +106,6 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
         </p>
       </section>
 
-      {/* Metrics Row */}
       <div className="mx-auto mt-8 grid max-w-[840px] grid-cols-2 sm:grid-cols-4 gap-4 print:hidden">
         <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -148,7 +156,6 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
         </div>
       </div>
 
-      {/* Main Action Bar */}
       <div className="mx-auto mt-7 max-w-[840px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
@@ -181,7 +188,6 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
             </Button>
           )}
 
-          {/* View Mode Switcher */}
           <div className="ml-2 inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
             <button
               type="button"
@@ -209,20 +215,51 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleResend}
-            icon={
-              emailSent ? (
-                <Check className="size-3.5 text-emerald-600" />
-              ) : (
-                <Mail className="size-3.5" />
-              )
-            }
-          >
-            {emailSent ? "Sent to Email!" : "Resend Email"}
-          </Button>
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-xs">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                  Email Delivery
+                </p>
+
+                {emailSentTo ? (
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <CheckCircle className="size-4 flex-shrink-0 text-emerald-500" />
+                    <span className="text-sm font-medium text-emerald-700 truncate">
+                      {emailSentTo}
+                    </span>
+                    {emailSentAt && (
+                      <span className="text-xs text-slate-400 flex-shrink-0">
+                        · {new Date(emailSentAt).toLocaleTimeString()}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-sm text-slate-600 truncate">
+                    {recipientEmail ?? (
+                      <span className="italic text-slate-400">No email provided</span>
+                    )}
+                  </p>
+                )}
+
+                {emailSendError && (
+                  <p className="mt-1 text-xs text-red-600">{emailSendError}</p>
+                )}
+              </div>
+
+              <Button
+                variant={emailSentTo ? "secondary" : "primary"}
+                size="sm"
+                onClick={handleResend}
+                isLoading={isSendingEmail}
+                icon={<Mail className="size-4" />}
+                disabled={!recipientEmail || isSendingEmail}
+                className="flex-shrink-0"
+              >
+                {emailSentTo ? "Resend" : "Send to Email"}
+              </Button>
+            </div>
+          </div>
 
           <Button
             variant="ghost"
@@ -241,7 +278,6 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
         </div>
       </div>
 
-      {/* Secondary Navigation Row: Back to Curation & Create Another Resume */}
       <div className="mx-auto mt-4 max-w-[840px] flex items-center justify-between px-2 print:hidden">
         {onBackToCuration && (
           <button
@@ -264,7 +300,6 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
         )}
       </div>
 
-      {/* Main Content Area: Document View OR Live PDF Previewer */}
       <div className="mx-auto mt-7 max-w-[840px]">
         {viewMode === "pdf" ? (
           <LivePdfPreviewer

@@ -434,6 +434,8 @@ export class LiveUiPathGateway implements IUiPathGateway {
       const name = job.draftData?.profile.fullName?.replace(/\s+/g, "_") || "";
       const userProfile = process.env.USERPROFILE || "";
       const searchDirs = [
+        path.resolve(process.cwd(), "..", "AutoCV-Robot", "Data", "Outputs"),
+        path.resolve(process.cwd(), "Data", "Outputs"),
         path.resolve(process.cwd(), "..", "robot", "Data", "Outputs"),
         path.join(userProfile, ".nuget", "packages", "autocv", "1.0.5", "content", "Data", "Outputs"),
       ];
@@ -456,20 +458,31 @@ export class LiveUiPathGateway implements IUiPathGateway {
     }
 
     if (pdfBase64) {
-      const binary = atob(pdfBase64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return new Blob([bytes], { type: "application/pdf" });
+      const buffer = Buffer.from(pdfBase64, "base64");
+      return new Blob([buffer], { type: "application/pdf" });
     }
 
-    if (job.downloadUrl) {
+    if (job.downloadUrl && /^https?:\/\//i.test(job.downloadUrl)) {
       const res = await fetch(job.downloadUrl);
       if (!res.ok) {
         throw new Error(`Failed to fetch PDF from URL: ${job.downloadUrl}`);
       }
       return res.blob();
+    }
+
+    if (job.draftData) {
+      const { generateAtsPdf } = await import("@/infrastructure/pdf/PdfGeneratorService");
+      const buffer = await generateAtsPdf(job.draftData);
+      updateJob(jobId, { pdfBase64: buffer.toString("base64") });
+      const readable = new ReadableStream({
+        start(controller) {
+          controller.enqueue(buffer);
+          controller.close();
+        }
+      });
+      return new Response(readable, {
+        headers: { "Content-Type": "application/pdf" },
+      }) as any;
     }
 
     throw new Error("PDF not ready or not found");

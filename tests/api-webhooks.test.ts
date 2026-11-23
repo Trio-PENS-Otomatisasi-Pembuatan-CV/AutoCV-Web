@@ -2,18 +2,22 @@ import { describe, it, expect, beforeAll, afterAll } from "bun:test";
 import { spawn } from "child_process";
 
 let serverProcess: ReturnType<typeof spawn> | null = null;
-const PORT = 3055;
+const PORT = 3063;
 const BASE_URL = `http://localhost:${PORT}`;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 beforeAll(async () => {
   serverProcess = spawn("bun", ["run", "start", "-p", String(PORT)], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(PORT) },
+    env: { ...process.env, PORT: String(PORT), NEXT_PUBLIC_UIPATH_MODE: "mock" },
     stdio: "pipe",
   });
 
   let ready = false;
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 50; i++) {
     try {
       const res = await fetch(`${BASE_URL}/login`);
       if (res.ok) {
@@ -33,7 +37,6 @@ afterAll(() => {
 
 describe("Backend Webhooks & Lifecycle API", () => {
   it("full lifecycle: submit → progress → draft (snake_case) → curate → approve → complete → download", async () => {
-    // 1. Submit job
     const submitRes = await fetch(`${BASE_URL}/api/cv/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -48,7 +51,8 @@ describe("Backend Webhooks & Lifecycle API", () => {
     expect(submitData.jobId).toBeDefined();
     const jobId = submitData.jobId;
 
-    // 2. Post progress update (simulating robot stage change)
+    await sleep(500);
+
     const progressRes = await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/progress`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -56,13 +60,11 @@ describe("Backend Webhooks & Lifecycle API", () => {
     });
     expect(progressRes.status).toBe(200);
 
-    // 3. Verify progress reflected
     const statusRes = await fetch(`${BASE_URL}/api/cv/jobs/${jobId}`);
     const statusData = await statusRes.json();
     expect(statusData.status).toBe("FETCHING_GITHUB");
     expect(statusData.progressPercent).toBe(45);
 
-    // 4. Post draft with snake_case schema (robot v2.0)
     const draftRes = await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/draft`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -101,7 +103,8 @@ describe("Backend Webhooks & Lifecycle API", () => {
     });
     expect(draftRes.status).toBe(200);
 
-    // 5. Verify draft normalized to camelCase ResumePayload
+    await sleep(200);
+
     const polledAfterDraft = await (
       await fetch(`${BASE_URL}/api/cv/jobs/${jobId}`)
     ).json();
@@ -112,7 +115,6 @@ describe("Backend Webhooks & Lifecycle API", () => {
       "https://github.com/test/payment-gateway"
     );
 
-    // 6. Curate (autosave partial edits)
     const curateRes = await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/curate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -132,7 +134,8 @@ describe("Backend Webhooks & Lifecycle API", () => {
     });
     expect(curateRes.status).toBe(200);
 
-    // 7. Approve
+    await sleep(500);
+
     const approveRes = await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -140,19 +143,24 @@ describe("Backend Webhooks & Lifecycle API", () => {
     });
     expect(approveRes.status).toBe(200);
 
-    // 8. Post completion with base64 PDF
     const fakePdf = Buffer.from("%PDF-1.4 mock pdf content").toString("base64");
     const completeRes = await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/complete`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         pdfBase64: fakePdf,
-        emailSent: true,
       }),
     });
     expect(completeRes.status).toBe(200);
 
-    // 9. Download PDF
+    const finalStatus = await (
+      await fetch(`${BASE_URL}/api/cv/jobs/${jobId}`)
+    ).json();
+
+    expect(finalStatus.status).toBe("COMPLETED");
+    expect(finalStatus.emailSent).toBe(true);
+    expect(finalStatus.emailSentAt).toBeDefined();
+
     const downloadRes = await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/download`);
     expect(downloadRes.status).toBe(200);
     expect(downloadRes.headers.get("content-type")).toContain("application/pdf");
@@ -161,7 +169,6 @@ describe("Backend Webhooks & Lifecycle API", () => {
   });
 
   it("error webhook marks job as FAILED", async () => {
-    // Submit fresh job
     const submitRes = await fetch(`${BASE_URL}/api/cv/generate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -173,7 +180,6 @@ describe("Backend Webhooks & Lifecycle API", () => {
     });
     const { jobId } = await submitRes.json();
 
-    // Post error
     const errorRes = await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/error`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -184,7 +190,6 @@ describe("Backend Webhooks & Lifecycle API", () => {
     });
     expect(errorRes.status).toBe(200);
 
-    // Verify FAILED status
     const polled = await (
       await fetch(`${BASE_URL}/api/cv/jobs/${jobId}`)
     ).json();
@@ -203,6 +208,8 @@ describe("Backend Webhooks & Lifecycle API", () => {
       }),
     });
     const { jobId } = await submitRes.json();
+
+    await sleep(500);
 
     const badProgressRes = await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/progress`, {
       method: "POST",
@@ -224,7 +231,8 @@ describe("Backend Webhooks & Lifecycle API", () => {
     });
     const { jobId } = await submitRes.json();
 
-    // Job is in PENDING/SCRAPING state, not AWAITING_CURATION
+    await sleep(500);
+
     const curateRes = await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/curate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -238,5 +246,163 @@ describe("Backend Webhooks & Lifecycle API", () => {
       }),
     });
     expect(curateRes.status).toBe(409);
+  });
+
+  it("/complete ignores robot's emailSent claim", async () => {
+    const submitRes = await fetch(`${BASE_URL}/api/cv/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        linkedinUrl: "https://www.linkedin.com/in/ignore-emailclaim",
+        githubUrl: "https://github.com/ignoreclaim",
+        recipientEmail: "ignore@test.com",
+      }),
+    });
+    const { jobId } = await submitRes.json();
+
+    await sleep(300);
+
+    await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/progress`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "AI_SYNTHESIZING", progress: 85 }),
+    });
+
+    await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/draft`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        draftData: {
+          personal_info: {
+            full_name: "Ignore Test",
+            headline: "Developer",
+            email: "ignore@test.com",
+            summary: "Test user",
+          },
+          work_experience: [],
+          repositories: [],
+          skills: [{ category: "Languages", items: ["Go"] }],
+        },
+      }),
+    });
+
+    await sleep(200);
+
+    await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        curatedData: {
+          profile: { fullName: "Ignore Test", headline: "Developer", email: "ignore@test.com", summary: "Test user" },
+          experiences: [],
+          projects: [],
+          skills: [{ category: "Languages", items: ["Go"] }],
+        },
+      }),
+    });
+
+    await sleep(300);
+
+    const fakePdf = Buffer.from("%PDF-1.4 mock pdf content").toString("base64");
+    const completeRes = await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pdfBase64: fakePdf,
+        emailSent: false,
+      }),
+    });
+    expect(completeRes.status).toBe(200);
+
+    await sleep(200);
+
+    const finalStatus = await (
+      await fetch(`${BASE_URL}/api/cv/jobs/${jobId}`)
+    ).json();
+
+    expect(finalStatus.status).toBe("COMPLETED");
+    expect(finalStatus.emailSent).toBe(true);
+  });
+
+  it("auto-send on completion (simulation mode)", async () => {
+    const submitRes = await fetch(`${BASE_URL}/api/cv/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        linkedinUrl: "https://www.linkedin.com/in/sim-test",
+        githubUrl: "https://github.com/simtest",
+        recipientEmail: "sim@test.com",
+      }),
+    });
+    const { jobId } = await submitRes.json();
+
+    await sleep(300);
+
+    await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/progress`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "AI_SYNTHESIZING", progress: 85 }),
+    });
+
+    await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/draft`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        draftData: {
+          personal_info: {
+            full_name: "Sim Test",
+            headline: "QA Engineer",
+            email: "sim@test.com",
+            summary: "Simulation test user",
+          },
+          work_experience: [],
+          repositories: [],
+          skills: [{ category: "Languages", items: ["JavaScript"] }],
+        },
+      }),
+    });
+
+    await sleep(200);
+
+    await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        curatedData: {
+          profile: { fullName: "Sim Test", headline: "QA Engineer", email: "sim@test.com", summary: "Simulation test user" },
+          experiences: [],
+          projects: [],
+          skills: [{ category: "Languages", items: ["JavaScript"] }],
+        },
+      }),
+    });
+
+    await sleep(300);
+
+    const fakePdf = Buffer.from("%PDF-1.4 simulation test").toString("base64");
+    await fetch(`${BASE_URL}/api/cv/jobs/${jobId}/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pdfBase64: fakePdf }),
+    });
+
+    const finalStatus = await (
+      await fetch(`${BASE_URL}/api/cv/jobs/${jobId}`)
+    ).json();
+
+    expect(finalStatus.status).toBe("COMPLETED");
+    expect(finalStatus.emailSent).toBe(true);
+    expect(finalStatus.emailSentAt).toBeDefined();
+  });
+
+  it("send-email responds 404 for unknown job", async () => {
+    const res = await fetch(`${BASE_URL}/api/cv/jobs/nonexistent-job-id-123/send-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    });
+    expect(res.status).toBe(404);
+    const data = await res.json();
+    expect(data.error).toContain("not found");
   });
 });

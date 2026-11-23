@@ -42,11 +42,17 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
     formErrors,
     resumeData,
     setResumeData,
+    hasCurated,
+    emailSentTo,
+    emailSentAt,
+    isSendingEmail,
+    emailSendError,
     handleFormFieldChange,
     handleUseSample,
     handleSubmitJob,
     handleApproveCuration,
     handleDownloadPdf,
+    handleSendEmail,
   } = workflow;
 
   const {
@@ -83,7 +89,6 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
           currentStep === "curation" ? "pt-5 sm:pt-6" : "pt-8 sm:pt-12"
         }`}
       >
-        {/* Step 1: Input & Ingestion */}
         {currentStep === "input" && (
           <div className="mx-auto max-w-[840px] transition-all duration-300">
             <InputForm
@@ -135,7 +140,6 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
           </div>
         )}
 
-        {/* Step 2: Curation Studio (#HumanInTheLead) */}
         {currentStep === "curation" && (
           <div className="w-full transition-all duration-300">
             <CurationDashboard
@@ -160,7 +164,6 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
           </div>
         )}
 
-        {/* Step 3: Delivery & Export */}
         {currentStep === "delivery" && (
           <div className="w-full transition-all duration-300">
             <DeliveryView
@@ -173,6 +176,12 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
               onDownloadPdf={handleDownloadPdf}
               onBackToCuration={() => setCurrentStep("curation")}
               onCreateAnother={() => setCurrentStep("input")}
+              recipientEmail={formData.recipientEmail}
+              emailSentTo={emailSentTo}
+              emailSentAt={emailSentAt}
+              isSendingEmail={isSendingEmail}
+              emailSendError={emailSendError}
+              onResendEmail={handleSendEmail}
             />
           </div>
         )}

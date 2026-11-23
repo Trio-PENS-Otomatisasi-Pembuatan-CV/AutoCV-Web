@@ -327,8 +327,13 @@ export class MockUiPathGateway implements IUiPathGateway {
     try {
       const fs = await import("fs");
       const path = await import("path");
-      const outputsDir = path.resolve(process.cwd(), "../robot/Data/Outputs");
-      if (fs.existsSync(outputsDir)) {
+      const searchDirs = [
+        path.resolve(process.cwd(), "../AutoCV-Robot/Data/Outputs"),
+        path.resolve(process.cwd(), "Data/Outputs"),
+        path.resolve(process.cwd(), "../robot/Data/Outputs"),
+      ];
+      const outputsDir = searchDirs.find((d) => fs.existsSync(d));
+      if (outputsDir) {
         const files = fs.readdirSync(outputsDir).filter((f) => f.endsWith(".pdf"));
         if (files.length > 0) {
           files.sort((a, b) => {
@@ -348,14 +353,48 @@ export class MockUiPathGateway implements IUiPathGateway {
 
     const job = getJob(jobId);
     if (job?.pdfBase64) {
-      const binary = atob(job.pdfBase64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return new Blob([bytes], { type: "application/pdf" });
+      const buffer = Buffer.from(job.pdfBase64, "base64");
+      const readable = new ReadableStream({
+        start(controller) {
+          controller.enqueue(buffer);
+          controller.close();
+        }
+      });
+      return new Response(readable, {
+        headers: { "Content-Type": "application/pdf" },
+      }) as any;
     }
-    const content = "%PDF-1.3\n% mock pdf file: " + jobId + "\n";
-    return new Blob([content], { type: "application/pdf" });
+
+    if (job?.draftData) {
+      const { generateAtsPdf } = await import("@/infrastructure/pdf/PdfGeneratorService");
+      const buffer = await generateAtsPdf(job.draftData);
+      updateJob(jobId, { pdfBase64: buffer.toString("base64") });
+      const readable = new ReadableStream({
+        start(controller) {
+          controller.enqueue(buffer);
+          controller.close();
+        }
+      });
+      return new Response(readable, {
+        headers: { "Content-Type": "application/pdf" },
+      }) as any;
+    }
+
+    const { generateAtsPdf } = await import("@/infrastructure/pdf/PdfGeneratorService");
+    const buffer = await generateAtsPdf({
+      profile: { fullName: "Mock User", headline: "", email: "", summary: "", linkedinUrl: "", githubUrl: "" },
+      experiences: [],
+      projects: [],
+      skills: [],
+    });
+    const readable = new ReadableStream({
+      start(controller) {
+        controller.enqueue(buffer);
+        controller.close();
+      }
+    });
+    return new Response(readable, {
+      headers: { "Content-Type": "application/pdf" },
+    }) as any;
   }
 }
