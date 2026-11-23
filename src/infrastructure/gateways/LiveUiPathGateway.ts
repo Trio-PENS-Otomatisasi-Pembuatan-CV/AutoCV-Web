@@ -1,5 +1,6 @@
 import type { IUiPathGateway, JobProgress, JobSubmission } from "@/core/interfaces/IUiPathGateway";
 import type { GenerateCVRequestDTO } from "@/application/dto/GenerateCVRequestDTO";
+import type { ResumePayload } from "@/core/entities/ResumePayload";
 import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
 import { orchestratorAuth } from "./OrchestratorAuthClient";
 import { createJob, getJob, updateJob } from "@/infrastructure/storage/JobStore";
@@ -338,10 +339,13 @@ export class LiveUiPathGateway implements IUiPathGateway {
       throw new Error(`Job '${jobId}' not found`);
     }
 
-    // Set optimistic state
+    const curatedPayload = curatedData || job.draftData;
+
+    // Set optimistic state with curated data persisted
     updateJob(jobId, {
       status: JobStatus.GENERATING_PDF,
       progress: 90,
+      draftData: curatedPayload as ResumePayload,
     });
 
     const token = await orchestratorAuth.getAccessToken();
@@ -352,7 +356,6 @@ export class LiveUiPathGateway implements IUiPathGateway {
     const webhookBaseUrl =
       process.env.BACKEND_WEBHOOK_BASE_URL?.replace(/\/+$/, "") || "http://localhost:3000";
 
-    const curatedPayload = curatedData || job.draftData;
     const compactCuratedJson = prepareCompactCuratedPayload(curatedPayload);
 
     const inputArgs = JSON.stringify({
