@@ -1,11 +1,19 @@
-# AutoCV-Web
+# AutoCV — Intelligent Career Dossier & ATS Resume Builder
 
-Next.js 16 portal untuk **AutoCV — Intelligent Career Dossier & ATS Resume Builder**.
-Form input → robot UiPath → dashboard kurasi → PDF/DOCX + email.
+> Membangun CV ATS-friendly dari profil LinkedIn dan proyek GitHub, disintesis dengan AI,
+> dikurasi manusia, lalu diekspor menjadi PDF/DOCX dan dikirim via email.
+>
+> **#HumanInTheLead** · Automation Hackathon 2026 (Indosat Ooredoo Hutchison × UiPath × ONE Indonesia)
 
-> **Project context:** AutoCV terdiri dari dua repo — portal web ini dan robot UiPath
-> (`AutoCV-Robot`). Panduan singkat yang mencakup keduanya ada pada bundel submission:
-> `Automation-CV/README.md`. Dokumentasi teknis lengkap ada di `Automation-CV/Docs/`.
+AutoCV menggabungkan **portal web Next.js** dengan **robot RPA UiPath**. Robot mengekstrak data
+LinkedIn/GitHub, AI merumuskan pencapaian dengan pola STAR, dan pengguna tetap memegang kendali
+penuh lewat dashboard kurasi sebelum dokumen final dicetak.
+
+```text
+Form Web  →  Robot Job 1 (scrape LinkedIn + GitHub)  →  AI Synthesis
+          →  Dashboard Kurasi (manusia menyunting & menyetujui)
+          →  Robot Job 2 (render DOCX/PDF + kirim email)  →  Selesai
+```
 
 ---
 
@@ -13,172 +21,166 @@ Form input → robot UiPath → dashboard kurasi → PDF/DOCX + email.
 
 | Layer | Teknologi |
 |---|---|
-| Framework | Next.js 16.4.5 (App Router, Turbopack) |
-| UI | React 19.3, TypeScript 5, Tailwind CSS v4, Lucide React |
-| Validasi | Zod 4 (`src/application/dto/*`) |
-| Email | Nodemailer |
-| Package manager | Bun 1.2.18 (`package.json → packageManager`), alternatif npm |
-| Runtime | Node.js ≥ 20 (dev & production) |
-| Arsitektur | Clean architecture: `core` → `application` → `infrastructure` → `presentation` |
-| Integrasi | UiPath Orchestrator Cloud REST (OAuth External App) + webhook masuk |
-
-Struktur layer:
-
-```text
-src/
-├── app/               # App Router + REST API routes
-├── application/       # DTO (Zod) + use-case
-├── core/              # entity, interface, config, util
-├── infrastructure/    # gateway (mock/live), email, pdf, storage
-└── presentation/      # komponen UI + hooks
-```
+| **Web / Frontend** | Next.js 16.4.5 (App Router), React 19.3, TypeScript 5, Tailwind CSS v4, Lucide React |
+| **Validasi & DTO** | Zod 4 (clean architecture: `core` → `application` → `infrastructure` → `presentation`) |
+| **Email (web)** | Nodemailer |
+| **Package manager** | Bun 1.2.18 (atau npm) |
+| **Robot / RPA** | UiPath Studio 26.10, Windows framework, .NET 10, ekspresi Visual Basic |
+| **Robot activities** | UiPath.System / Mail / Excel / Testing / UIAutomation / WebAPI Activities |
+| **Script helper robot** | Node.js (`LinkedInDomExtractor.js`, `FetchGitHubRepos.js`, `GenerateResumeDocument.js`) + PowerShell runners |
+| **AI / LLM** | Gemini `gemini-3.5-flash-lite` (primary) → OpenRouter `openai/gpt-4o-mini` (fallback otomatis) |
+| **Dokumen** | Template `ATS_Resume_Template.docx` → generator DOCX/PDF |
+| **Orkestrasi** | UiPath Orchestrator Cloud + REST webhook |
 
 ---
 
 ## 2. Kebutuhan Aplikasi / Koneksi
 
-| Kebutuhan | Mode Mock | Mode Live |
+### 2.1 Prasyarat
+
+| Kebutuhan | Wajib | Keterangan |
 |---|---|---|
-| Node.js ≥ 20 + Bun ≥ 1.2 (atau npm) | Wajib | Wajib |
-| Browser modern | Wajib | Wajib |
-| UiPath Orchestrator Cloud + External App (Client ID/Secret) | — | Wajib |
-| Dua process/release robot sudah di-publish | — | Wajib |
-| ngrok / host publik agar robot bisa callback ke web | — | Wajib (dev lokal) |
-| SMTP host & kredensial (dikirim robot) | — | Opsional (mode simulasi tersedia) |
+| Windows 10/11 64-bit | Ya | Diperlukan UiPath Studio + otomasi browser |
+| Node.js ≥ 20 & Bun ≥ 1.2 (atau npm) | Ya (web) | Menjalankan portal Next.js |
+| UiPath Studio 26.10 + `uip` CLI | Live mode | `uip` butuh hak admin saat instalasi |
+| Ekstensi UiPath Web Automation | Live mode | Chrome atau Edge |
+| Sesi LinkedIn yang sudah login | Live mode | Robot memakai sesi browser yang ada |
+| Akun UiPath Orchestrator + External App | Live mode | Scope `OR.Execution`, `OR.Jobs`, `OR.Monitoring` |
+| ngrok / host publik | Live mode lokal | Agar robot bisa memanggil webhook ke web |
+| SMTP host & kredensial | Live mode (email) | Bisa diganti mode simulasi |
+| Gemini API key + OpenRouter API key | Ya (AI) | Hanya di file lokal, **jangan di-commit** |
 
-Mode dipilih lewat `NEXT_PUBLIC_UIPATH_MODE`:
+### 2.2 Environment Variables
 
-| Mode | Nilai | Perilaku |
+Salin `.env.example` → `.env.local` (web) dan `.env` (robot), lalu isi nilainya.
+Contoh di bawah hanya **placeholder**, bukan nilai asli.
+
+| Variabel | Contoh (dummy) | Dipakai oleh |
 |---|---|---|
-| **Mock** (default) | `mock` | `MockUiPathGateway` mensimulasikan seluruh siklus job dengan data contoh. Tanpa Orchestrator. |
-| **Live** | `live` | `LiveUiPathGateway` memanggil Orchestrator, polling status, menerima webhook dari robot. |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://localhost:3000` | Web |
+| `NEXT_PUBLIC_UIPATH_MODE` | `mock` atau `live` | Web |
+| `UIPATH_ORCHESTRATOR_URL` | `https://cloud.uipath.com/<org>/<tenant>/orchestrator_` | Web (live) |
+| `UIPATH_CLIENT_ID` | `<your-client-id>` | Web (live) |
+| `UIPATH_CLIENT_SECRET` | `<your-client-secret>` | Web (live) |
+| `UIPATH_TENANT_NAME` | `<tenant-name>` | Web (live) |
+| `UIPATH_FOLDER_ID` | `<folder-id>` | Web (live) |
+| `UIPATH_PROCESS_KEY_JOB1` | `<process-key-job1>` | Web (live) |
+| `UIPATH_PROCESS_KEY_JOB2` | `<process-key-job2>` | Web (live) |
+| `BACKEND_WEBHOOK_BASE_URL` | `https://<ngrok-subdomain>.ngrok-free.app` | Web + Robot |
+| `AI_PROVIDER` | `Gemini` | Robot |
+| `AI_FALLBACK_PROVIDER` | `OpenAI` | Robot |
+| `GEMINI_API_KEY` | `<gemini-api-key>` | Robot |
+| `GEMINI_CHAT_MODEL` | `gemini-3.5-flash-lite` | Robot |
+| `OPENAI_API_KEY` | `<openrouter-api-key>` | Robot (fallback) |
+| `OPENAI_BASE_URL` | `https://openrouter.ai/api/v1` | Robot (fallback) |
+| `OPENAI_CHAT_MODEL` | `openai/gpt-4o-mini` | Robot (fallback) |
 
-### 2.1 Environment Variables
+> Konfigurasi AI robot juga dibaca dari `AutoCV-Robot/Data/Config/ai_settings.json`.
+> Gunakan `ai_settings.example.json` sebagai template.
 
-Salin `.env.example` → `.env.local`, lalu isi nilainya. Semua nilai sensitif hanya
-placeholder — **jangan commit nilai asli**.
+### 2.3 Endpoint Web ↔ Robot
 
-```env
-# API base (dipakai browser)
-NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
-
-# mock | live
-NEXT_PUBLIC_UIPATH_MODE=mock
-
-# Wajib saat NEXT_PUBLIC_UIPATH_MODE=live
-UIPATH_ORCHESTRATOR_URL=https://cloud.uipath.com/<org>/<tenant>/orchestrator_
-UIPATH_CLIENT_ID=<your-client-id>
-UIPATH_CLIENT_SECRET=<your-client-secret>
-UIPATH_TENANT_NAME=<tenant-name>
-UIPATH_FOLDER_ID=<folder-id>
-UIPATH_PROCESS_KEY_JOB1=<process-key-job1>
-UIPATH_PROCESS_KEY_JOB2=<process-key-job2>
-
-# URL publik web ini, dipakai robot untuk callback
-BACKEND_WEBHOOK_BASE_URL=http://localhost:3000
-```
+| Method | Endpoint | Pemanggil | Fungsi |
+|---|---|---|---|
+| `POST` | `/api/cv/generate` | Frontend | Mulai Job 1, mengembalikan `{ jobId }` |
+| `GET` | `/api/cv/jobs/{jobId}` | Frontend (poll) | Status job + data draf |
+| `POST` | `/api/cv/jobs/{jobId}/draft` | Robot (Job 1) | Kirim draf hasil AI |
+| `POST` | `/api/cv/jobs/{jobId}/progress` | Robot (Job 1) | Update tahap/progress |
+| `POST` | `/api/cv/jobs/{jobId}/curate` | Frontend | Autosave hasil kurasi |
+| `POST` | `/api/cv/jobs/{jobId}/approve` | Frontend | Memicu Job 2 |
+| `POST` | `/api/cv/jobs/{jobId}/complete` | Robot (Job 2) | Kirim PDF base64 + status email |
+| `POST` | `/api/cv/jobs/{jobId}/error` | Robot | Notifikasi kegagalan |
+| `GET` | `/api/cv/jobs/{jobId}/download` | Frontend | Unduh PDF |
+| `POST` | `/api/cv/jobs/{jobId}/send-email` | Frontend | Kirim ulang PDF ke email kandidat |
 
 ---
 
 ## 3. Cara Menjalankan
 
-### 3.1 Mode Mock (paling cepat, tanpa robot)
+### 3.1 Web — Mode Mock (tanpa robot, paling cepat)
 
-```bash
+```powershell
 cd AutoCV-Web
-cp .env.example .env.local        # Windows: Copy-Item .env.example .env.local
+Copy-Item .env.example .env.local
+# pastikan NEXT_PUBLIC_UIPATH_MODE=mock
 bun install
-bun dev                           # http://localhost:3000
+bun dev
+# buka http://localhost:3000
 ```
 
-Pastikan `NEXT_PUBLIC_UIPATH_MODE=mock`. Seluruh alur (submit → progress → kurasi →
-download PDF) berjalan tanpa Orchestrator.
+Mode mock mensimulasikan seluruh siklus job (scrape → synthesis → kurasi → PDF) tanpa
+Orchestrator, sehingga cocok untuk pengembangan frontend.
 
-### 3.2 Mode Live (robot sungguhan)
+### 3.2 Web — Mode Live (robot sungguhan)
 
-1. **Publish robot** — buka `AutoCV-Robot` di UiPath Studio → **Publish** ke Orchestrator.
-   Catat Process/Release Key Job 1 dan Job 2 → `UIPATH_PROCESS_KEY_JOB1/JOB2`.
-2. **Orchestrator Assets** (folder tempat robot berjalan):
-
-   | Asset | Tipe | Keterangan |
-   |---|---|---|
-   | `Backend_Webhook_Base_URL` | Text | URL publik web ini |
-   | `Gemini_API_Key` | Credential | API key Google AI Studio |
-   | `SMTP_Host` / `SMTP_Port` / `SMTP_Credential` | Text / Integer / Credential | Server email pengiriman PDF |
-   | `Word_Template_Path` | Text | `Data\Templates\ATS_Resume_Template.docx` |
-
-3. **External Application** (Automation Cloud → Admin → External Applications → Add):
-   Type **Confidential**, scope `OR.Execution`, `OR.Jobs`, `OR.Monitoring`.
-   Salin Client ID/Secret ke `.env.local`.
-4. **Expose localhost** agar robot bisa callback:
-   ```bash
+1. Isi `.env.local`:
+   ```env
+   NEXT_PUBLIC_UIPATH_MODE=live
+   UIPATH_ORCHESTRATOR_URL=https://cloud.uipath.com/<org>/<tenant>/orchestrator_
+   UIPATH_CLIENT_ID=<your-client-id>
+   UIPATH_CLIENT_SECRET=<your-client-secret>
+   UIPATH_FOLDER_ID=<folder-id>
+   UIPATH_PROCESS_KEY_JOB1=<process-key-job1>
+   UIPATH_PROCESS_KEY_JOB2=<process-key-job2>
+   BACKEND_WEBHOOK_BASE_URL=https://<ngrok-subdomain>.ngrok-free.app
+   ```
+2. Ekspos localhost agar robot bisa memanggil webhook:
+   ```powershell
    ngrok http 3000
    ```
-   Salin URL HTTPS ke `BACKEND_WEBHOOK_BASE_URL` (di `.env.local` **dan** Orchestrator Asset).
-5. **Jalankan web:**
-   ```bash
-   NEXT_PUBLIC_UIPATH_MODE=live bun dev
-   ```
+3. Jalankan `bun dev`, buka form, lalu submit.
 
-### 3.3 Build production
+### 3.3 Robot — UiPath Studio
 
-```bash
-bun run build
-bun start
+1. Buka folder `AutoCV-Robot` di UiPath Studio.
+2. Isi `Data/Config/ai_settings.json` (dari `ai_settings.example.json`) atau `.env`.
+3. Jalankan `Main.xaml` dengan argumen input (lihat §4).
+
+### 3.4 Robot — `uip` CLI
+
+```powershell
+# dari folder AutoCV-Robot
+uip login                                  # sekali saja, membuka browser
+uip rpa validate --file-path "Main.xaml" --project-dir "."
+uip rpa build "."
+uip rpa pack "." "../_AutoCV-Pack-Out" --package-version 1.0.0
+uip rpa publish "../_AutoCV-Pack-Out/AutoCV.Deployment.1.0.0.nupkg"
 ```
 
-Deploy ke Vercel: hubungkan repo → **Root Directory** = `AutoCV-Web` → tambahkan environment
-variables → deploy.
+### 3.5 Simulasi penuh (tanpa kredensial eksternal)
 
-> **Catatan:** `JobStore` masih in-memory. Di platform serverless (Vercel) state job bersifat
-> sementara; untuk mode live gunakan host Node.js persisten (VPS/Railway/Render/Fly.io) atau
-> tambahkan Redis/Upstash sebagai backend `JobStore`.
+Set `NEXT_PUBLIC_UIPATH_MODE=mock` di web dan jalankan robot dengan
+`in_UseMockFallback=True`. Robot akan memakai fixture di `Data/Mocks/`.
 
 ---
 
 ## 4. Contoh Input & Output
 
-### 4.1 Input (form web)
+### 4.1 Input form web
 
-| Field | Wajib | Contoh |
-|---|---|---|
-| LinkedIn Profile URL | Tidak (punya default) | `https://www.linkedin.com/in/jane-doe` |
-| GitHub Profile URL | Ya | `https://github.com/janedoe` |
-| Target Job Role | Tidak | `Fullstack Software Engineer` |
-| Recipient Email | Tidak | `jane.doe@example.com` |
+| Field | Contoh |
+|---|---|
+| LinkedIn Profile URL | `https://www.linkedin.com/in/jane-doe` |
+| GitHub Profile URL | `https://github.com/janedoe` |
+| Target Job Role (opsional) | `Fullstack Software Engineer` |
+| Recipient Email | `jane.doe@example.com` |
 
-Padanan request API (`POST /api/cv/generate`):
-
-```json
-{
-  "linkedinUrl": "https://www.linkedin.com/in/jane-doe",
-  "githubUrl": "https://github.com/janedoe",
-  "targetRole": "Fullstack Software Engineer",
-  "recipientEmail": "jane.doe@example.com",
-  "language": "en"
-}
-```
-
-### 4.2 Response
-
-```json
-{ "jobId": "9f6c1f0e-0000-4a00-8000-000000000000" }
-```
-
-Lalu `GET /api/cv/jobs/{jobId}` untuk polling:
+Padanan argumen robot (`Main.xaml`):
 
 ```json
 {
-  "jobId": "9f6c1f0e-0000-4a00-8000-000000000000",
-  "status": "AWAITING_CURATION",
-  "progress": 60
+  "in_JobId": "job-123",
+  "in_LinkedInUrl": "https://www.linkedin.com/in/jane-doe",
+  "in_GitHubUrl": "https://github.com/janedoe",
+  "in_TargetJobRole": "Fullstack Software Engineer",
+  "in_RecipientEmail": "jane.doe@example.com",
+  "in_UseMockFallback": false,
+  "in_RequireManualApproval": true,
+  "in_WebhookBaseUrl": "http://localhost:3000"
 }
 ```
 
-Status yang mungkin: `PENDING → SCRAPING_LINKEDIN → FETCHING_GITHUB → AI_SYNTHESIZING →
-AWAITING_CURATION → GENERATING_PDF → DELIVERING_EMAIL → COMPLETED` (atau `FAILED`).
-
-### 4.3 Output draf dari robot (dipotong, data fiktif)
+### 4.2 Output antara — `out_DraftResumePayload` (dipotong, data fiktif)
 
 ```json
 {
@@ -190,6 +192,7 @@ AWAITING_CURATION → GENERATING_PDF → DELIVERING_EMAIL → COMPLETED` (atau `
     "linkedinUrl": "https://www.linkedin.com/in/jane-doe",
     "githubUrl": "https://github.com/janedoe"
   },
+  "experiences": [],
   "projects": [
     {
       "id": 1,
@@ -200,58 +203,81 @@ AWAITING_CURATION → GENERATING_PDF → DELIVERING_EMAIL → COMPLETED` (atau `
       "isSelected": true
     }
   ],
-  "experiences": [],
   "skills": [],
   "education": []
 }
 ```
 
-### 4.4 Output akhir
+### 4.3 Output akhir
 
-| Output | Nilai / Lokasi |
+| Output | Lokasi / Nilai |
 |---|---|
-| PDF ATS | Diunduh via `GET /api/cv/jobs/{jobId}/download` |
-| DOCX + PDF di robot | `AutoCV-Robot/Data/Outputs/CV_<Nama>_<timestamp>.pdf` / `.docx` |
-| Email | Terkirim ke `recipientEmail`; bisa dikirim ulang via `POST /api/cv/jobs/{jobId}/send-email` |
-| Status | `COMPLETED` → tombol download muncul di UI |
+| PDF ATS | `AutoCV-Robot/Data/Outputs/CV_<Nama>_<timestamp>.pdf` |
+| DOCX | `AutoCV-Robot/Data/Outputs/CV_<Nama>_<timestamp>.docx` |
+| Email | Terkirim ke `in_RecipientEmail`, atau log `Mode: SIMULATION` |
+| Status job | `PENDING → SCRAPING → SYNTHESIZING → CURATING → COMPLETED` |
 
 ---
 
-## 5. API Endpoints (Robot ↔ Backend)
+## 5. Struktur Project
 
-| Method | Endpoint | Called By | Purpose |
-|--------|----------|-----------|---------|
-| `POST` | `/api/cv/generate` | Frontend | Start Job 1, returns `{jobId}` |
-| `GET` | `/api/cv/jobs/{jobId}` | Frontend (poll) | Job status + draft data |
-| `POST` | `/api/cv/jobs/{jobId}/draft` | **Robot (Job 1)** | Push AI-synthesized draft (snake_case or camelCase accepted) |
-| `POST` | `/api/cv/jobs/{jobId}/progress` | **Robot (Job 1)** | Optional stage updates: `{status, progress}` |
-| `POST` | `/api/cv/jobs/{jobId}/curate` | Frontend | Autosave curation edits (partial) |
-| `POST` | `/api/cv/jobs/{jobId}/approve` | Frontend | Trigger Job 2 with curated data |
-| `POST` | `/api/cv/jobs/{jobId}/complete` | **Robot (Job 2)** | Push base64 ATS PDF + emailSent flag |
-| `POST` | `/api/cv/jobs/{jobId}/error` | **Robot** | Failure notification |
-| `GET` | `/api/cv/jobs/{jobId}/download` | Frontend | Download base64 PDF served by backend |
-| `POST` | `/api/cv/jobs/{jobId}/send-email` | Frontend | Re-send the generated PDF to the recipient email |
-
-## 6. Job Lifecycle
-
+```text
+Automation-CV/
+├── README.md                  # Panduan singkat ini
+├── AutoCV-Web/                # Portal Next.js (frontend + API routes)
+│   ├── src/
+│   │   ├── app/               # App Router + REST API
+│   │   ├── application/       # DTO & use-case
+│   │   ├── core/              # entity, interface, config
+│   │   ├── infrastructure/    # gateway, email, pdf, storage
+│   │   └── presentation/      # komponen UI & hooks
+│   └── .env.example
+├── AutoCV-Robot/              # Proyek robot UiPath
+│   ├── Main.xaml              # Entry point
+│   ├── Modules/               # 00–06 workflow
+│   ├── Data/
+│   │   ├── Config/            # ai_settings.json (lokal, tidak di-commit)
+│   │   ├── Mocks/             # fixture fallback
+│   │   ├── Outputs/           # hasil PDF/DOCX
+│   │   ├── Scripts/           # helper JS/PowerShell
+│   │   └── Templates/         # template DOCX
+│   ├── .env.example
+│   └── Data/Config/ai_settings.example.json
+└── Docs/                       # Dokumentasi teknis lengkap
 ```
-Frontend: POST /generate → 202 {jobId}
-  → Orchestrator starts Job 1 (scrape LinkedIn → GitHub → AI synthesis)
-Robot Job 1: POST /draft {draftData} → backend stores draft, status=AWAITING_CURATION
-Frontend: polls GET /jobs/{jobId} → shows curation dashboard
-User: curates → POST /approve {curatedData}
-  → Orchestrator starts Job 2 (Word template → PDF → email)
-Robot Job 2: POST /complete {pdfBase64, emailSent:true}
-Frontend: polls → COMPLETED → download PDF
-```
 
-## 7. Testing Locally
+Folder `_AutoCV-Pack-Out/`, `AutoCV-Robot-Packages/`, `node_modules/`, `.next/`, dan `.local/`
+adalah artefak build — tidak perlu di-commit.
 
-```bash
-bun dev                    # mock mode
-# Submit form → watch mock robot progress → curate → download mock PDF
-```
+---
+
+## 6. Security & Secrets
+
+Repository ini **tidak menyimpan** password atau API key.
+
+- File `.env`, `.env.local`, `Data/Config/.env`, `Data/Config/ai_settings.json`, dan
+  `Data/Config/gemini_api_key.txt` sudah masuk `.gitignore`.
+- Gunakan hanya file `.example` sebagai template, lalu isi nilai asli secara lokal.
+- Untuk produksi, simpan kredensial di **UiPath Orchestrator Assets** (Credential) atau
+  environment variables platform hosting.
+- Jika sebuah key pernah tidak sengaja ter-commit, **rotasi key** tersebut.
+
+---
+
+## 7. Dokumentasi Lengkap
+
+| Topik | Lokasi |
+|---|---|
+| Indeks dokumentasi | `Docs/README.md` |
+| Setup pengembangan | `Docs/Getting-Started/Development-Setup.md` |
+| Arsitektur sistem | `Docs/System-Design/System-Architecture.md` |
+| Referensi API | `Docs/Backend-API/API-Reference.md` |
+| Panduan robot | `Docs/AutoCV-Robot/Workflow-Guide.md` |
+| Konfigurasi lingkungan | `Docs/Deployment/Environment-Configuration.md` |
+| Deployment | `Docs/Deployment/Deployment-Guide.md` |
+
+---
 
 ## 8. License
 
-MIT — Automation Hackathon 2026 (#HumanInTheLead)
+MIT — Automation Hackathon 2026 (#HumanInTheLead).
