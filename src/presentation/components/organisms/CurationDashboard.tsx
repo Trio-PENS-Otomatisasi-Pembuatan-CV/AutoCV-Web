@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ProjectCard } from "../molecules/ProjectCard";
 import { ExperienceItem } from "../molecules/ExperienceItem";
+import { CustomSectionItem } from "../molecules/CustomSectionItem";
 import { ResumeDocument } from "./ResumeDocument";
 import { Button } from "../atoms/Button";
 import { TextInput } from "../atoms/TextInput";
@@ -17,8 +18,9 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
+  Plus,
 } from "lucide-react";
-import type { ResumePayload, ResumeLanguage } from "@/core/entities/ResumePayload";
+import type { ResumePayload, ResumeLanguage, CustomSection } from "@/core/entities/ResumePayload";
 
 export interface CurationDashboardProps {
   resume: ResumePayload;
@@ -30,6 +32,10 @@ export interface CurationDashboardProps {
   onToggleExperience?: (expId: string) => void;
   onUpdateExperienceBullets: (expId: string, bullets: string[]) => void;
   onUpdateSkillCategoryItems?: (categoryIndex: number, itemsString: string) => void;
+  onAddCustomSection?: (title: string) => void;
+  onUpdateCustomSection?: (id: string, updates: Partial<CustomSection>) => void;
+  onRemoveCustomSection?: (id: string) => void;
+  onToggleCustomSection?: (id: string) => void;
   onRegenerateSummary: () => void;
   onRequestAIRewrite?: () => void;
   onRerunSynthesis: () => void;
@@ -48,6 +54,10 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
   onToggleExperience,
   onUpdateExperienceBullets,
   onUpdateSkillCategoryItems,
+  onAddCustomSection,
+  onUpdateCustomSection,
+  onRemoveCustomSection,
+  onToggleCustomSection,
   onRegenerateSummary,
   onRequestAIRewrite,
   onRerunSynthesis,
@@ -60,6 +70,10 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
   const selectedCount = resume.projects.filter((p) => p.isSelected !== false).length;
   const selectedExpCount = resume.experiences.filter((e) => e.isSelected !== false).length;
   const handleRewrite = onRequestAIRewrite || onRegenerateSummary || onRerunSynthesis;
+
+  const customSectionCompleteness = (resume.customSections || []).some(
+    (s) => s.title.trim() && s.items.some((i) => i.title.trim() || i.description.trim())
+  );
 
   // Completion calculation for Section Stepper / Anchor Navigation
   const sections = [
@@ -89,6 +103,11 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
       id: "section-skills",
       label: "Technical Skills",
       isComplete: resume.skills.some((s) => s.items.length > 0),
+    },
+    {
+      id: "section-custom",
+      label: "Custom Sections",
+      isComplete: customSectionCompleteness,
     },
   ];
 
@@ -392,12 +411,55 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
                   />
                 </div>
               ))}
-            </div>
+</div>
           </div>
 
-          {/* 3. Docked Sticky Footer */}
+          {/* Section 5: Custom Sections Editor */}
+          {resume.customSections !== undefined && (
+            <div
+              id="section-custom"
+              className="scroll-mt-20 rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-xs"
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    Custom Sections
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Add user-defined sections (e.g. Certifications, Awards, Projects)
+                  </p>
+                </div>
+                {onAddCustomSection && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => onAddCustomSection("")}
+                    icon={<Plus className="size-3.5" />}
+                  >
+                    Add Section
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                {resume.customSections.map((section) => (
+                  <CustomSectionItem
+                    key={section.id}
+                    section={section}
+                    onUpdateSection={onUpdateCustomSection}
+                    onRemoveSection={onRemoveCustomSection}
+                  />
+                ))}
+{(resume.customSections?.length ?? 0) === 0 && onAddCustomSection && (
+                  <p className="text-xs text-slate-500 italic">No custom sections yet. Click &#x27;Add Section&#x27; to begin.</p>
+              )}
+              </div>
+            </div>
+          )}
+
+          {/* Docked Sticky Footer */}
           <div className="sticky bottom-0 z-20 -mx-5 sm:-mx-6 px-5 sm:px-6 py-4 bg-white/95 backdrop-blur border-t border-slate-200 flex flex-wrap items-center justify-between gap-3 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] rounded-b-2xl">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5">
               {onBackToInput && (
                 <button
                   type="button"

@@ -95,6 +95,20 @@ export function buildAtsResumeHtml(resume: ResumePayload): string {
       ${edu.gpa ? `<div style="font-size: 9pt; color: #64748B;">GPA: ${escapeXml(edu.gpa)}</div>` : ""}
     `).join("")}
   ` : ""}
+
+  ${resume.customSections?.length ? `
+    ${resume.customSections.map((section) => {
+      const itemsHtml = (section.items || []).map((entry: any) => {
+        const title = entry?.title || "";
+        const desc = entry?.description || "";
+        if (title) {
+          return `<li><strong>${escapeXml(title)}</strong>${desc ? " — " + escapeXml(desc) : ""}</li>`;
+        }
+        return `<li>${escapeXml(desc)}</li>`;
+      }).join("");
+      return `<div class="section-title">${escapeXml(section.title)}</div><ul>${itemsHtml}</ul>`;
+    }).join("")}
+  ` : ""}
 </body>
 </html>`;
 }

@@ -51,6 +51,17 @@ function prepareCompactCuratedPayload(raw: any): string {
 
   const skills = Array.isArray(raw?.skills) ? raw.skills : [];
 
+  const rawCustomSections = raw?.customSections || raw?.custom_sections || [];
+  const customSections = Array.isArray(rawCustomSections)
+    ? rawCustomSections
+        .filter((s: any) => s && s.isSelected !== false)
+        .map((s: any) => ({
+          id: s.id || `custom-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          title: s.title || s.heading || "Section",
+          items: Array.isArray(s.items) ? s.items : Array.isArray(s.bullets) ? s.bullets : [],
+        }))
+    : [];
+
   const compact = {
     profile: {
       fullName: profile.fullName || profile.name || "Candidate",
@@ -66,6 +77,7 @@ function prepareCompactCuratedPayload(raw: any): string {
     projects: selectedProjects,
     skills,
     education,
+    customSections,
     language: raw?.language || "en",
   };
 

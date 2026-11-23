@@ -19,7 +19,7 @@ export const ResumeDocument: React.FC<ResumeDocumentProps> = ({
     [resume, currentLang]
   );
   const t = ATS_I18N[currentLang] || ATS_I18N.en;
-  const { profile, experiences, projects, skills, education } = canonical;
+  const { profile, experiences, projects, skills, education, customSections } = canonical;
 
   const contactItems = [
     profile.email,
@@ -236,6 +236,32 @@ export const ResumeDocument: React.FC<ResumeDocumentProps> = ({
               </div>
             ))}
           </div>
+        </section>
+      )}
+
+      {/* 6. Custom Sections */}
+      {customSections && customSections.length > 0 && (
+        <section className="mt-4">
+          {customSections.map((section, idx) => (
+            <div key={section.id || idx} className="mb-4">
+              <h2 className="border-b-[1.5px] border-[#0F172A] pb-0.5 text-[11.5px] font-bold uppercase tracking-wider text-[#0F172A]">
+                {section.title}
+              </h2>
+              <ul className="mt-1.5 space-y-1 pl-4 list-disc text-xs text-[#334155] marker:text-[#334155]">
+                {section.items.map((entry, itemIdx) => (
+                  <li key={itemIdx} className="leading-[1.35]">
+                    {entry.title && (
+                      <>
+                        <span className="font-bold text-[#0F172A]">{entry.title}</span>
+                        {entry.description && " — "}
+                      </>
+                    )}
+                    {entry.description}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </section>
       )}
     </article>

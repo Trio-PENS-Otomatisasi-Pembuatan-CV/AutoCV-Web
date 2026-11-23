@@ -5,6 +5,7 @@ import type {
   TechnicalProject,
   EducationRecord,
   SkillCategory,
+  CustomSection,
 } from "@/core/entities/ResumePayload";
 
 // 1. Exact Sentence / Bullet / Summary pairs for seamless bidirectional translation
@@ -546,6 +547,15 @@ export function translateResumePayload(
     graduationYear: translateDate(edu.graduationYear, targetLang),
   }));
 
+  // 6. Custom sections translation
+  const translatedCustomSections: CustomSection[] | undefined = resume.customSections?.map((section) => ({
+    ...section,
+    items: section.items.map((item) => ({
+      title: item.title,
+      description: translateTextLine(item.description, targetLang),
+    })),
+  }));
+
   return {
     ...resume,
     profile: translatedProfile,
@@ -553,6 +563,7 @@ export function translateResumePayload(
     projects: translatedProjects,
     skills: translatedSkills,
     education: translatedEducation,
+    customSections: translatedCustomSections,
     language: targetLang,
   };
 }
