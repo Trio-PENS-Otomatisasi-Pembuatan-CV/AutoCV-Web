@@ -39,6 +39,7 @@ export async function POST(
       recipientEmail,
       candidateName: job.draftData?.profile?.fullName ?? "Candidate",
       baseUrl,
+      pdfBase64: job.pdfBase64,
     });
 
     updateJob(jobId, {
