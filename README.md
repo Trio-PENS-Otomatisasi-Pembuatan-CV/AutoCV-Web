@@ -2,6 +2,11 @@
 
 Next.js 16 frontend for **AutoCV** — Intelligent Career Dossier & ATS Resume Builder.
 
+> **Project context:** AutoCV consists of two repos — this web portal and the UiPath robot
+> (`AutoCV-Robot`). The short guide covering both (tools, requirements, how to run, sample
+> input/output) ships alongside the project bundle as `Automation-CV/README.md`.
+> Full technical documentation lives in the submission bundle under `Docs/`.
+
 ## Quick Start
 
 ```bash
@@ -28,13 +33,13 @@ NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
 NEXT_PUBLIC_UIPATH_MODE=mock
 
 # Required when NEXT_PUBLIC_UIPATH_MODE=live
-UIPATH_ORCHESTRATOR_URL=https://cloud.uipath.com/{orgName}/{tenantName}/orchestrator_
-UIPATH_CLIENT_ID=your-client-id
-UIPATH_CLIENT_SECRET=your-client-secret
-UIPATH_TENANT_NAME=DefaultTenant
-UIPATH_FOLDER_ID=12345
-UIPATH_PROCESS_KEY_JOB1=AutoCV_Job1_ScrapeAndSynthesize
-UIPATH_PROCESS_KEY_JOB2=AutoCV_Job2_RenderPDF
+UIPATH_ORCHESTRATOR_URL=https://cloud.uipath.com/<org>/<tenant>/orchestrator_
+UIPATH_CLIENT_ID=<your-client-id>
+UIPATH_CLIENT_SECRET=<your-client-secret>
+UIPATH_TENANT_NAME=<tenant-name>
+UIPATH_FOLDER_ID=<folder-id>
+UIPATH_PROCESS_KEY_JOB1=<process-key-job1>
+UIPATH_PROCESS_KEY_JOB2=<process-key-job2>
 
 # Robot callbacks must reach this URL (ngrok for local dev)
 BACKEND_WEBHOOK_BASE_URL=http://localhost:3000
@@ -93,6 +98,7 @@ bun dev
 | `POST` | `/api/cv/jobs/{jobId}/complete` | **Robot (Job 2)** | Push base64 ATS PDF + emailSent flag |
 | `POST` | `/api/cv/jobs/{jobId}/error` | **Robot** | Failure notification |
 | `GET` | `/api/cv/jobs/{jobId}/download` | Frontend | Download base64 PDF served by backend |
+| `POST` | `/api/cv/jobs/{jobId}/send-email` | Frontend | Re-send the generated PDF to the recipient email |
 
 ## Job Lifecycle
 
