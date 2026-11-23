@@ -1,6 +1,11 @@
 import { useState, useCallback } from "react";
-import type { ResumePayload, ResumeLanguage } from "@/core/entities/ResumePayload";
+import type { ResumePayload, ResumeLanguage, CustomSection } from "@/core/entities/ResumePayload";
 import { translateResumePayload } from "@/core/utils/atsTranslator";
+
+function generateId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+  return `custom-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+}
 
 export function useCurator(initialResume: ResumePayload) {
   const [resume, setResume] = useState<ResumePayload>({
@@ -86,6 +91,44 @@ export function useCurator(initialResume: ResumePayload) {
     []
   );
 
+  const addCustomSection = useCallback((title: string) => {
+    const newSection: CustomSection = {
+      id: generateId(),
+      title: title || "New Section",
+      items: [],
+      isSelected: true,
+    };
+    setResume((prev) => ({
+      ...prev,
+      customSections: [...(prev.customSections || []), newSection],
+    }));
+  }, []);
+
+  const updateCustomSection = useCallback((id: string, updates: Partial<CustomSection>) => {
+    setResume((prev) => ({
+      ...prev,
+      customSections: (prev.customSections || []).map((s) =>
+        s.id === id ? { ...s, ...updates } : s
+      ),
+    }));
+  }, []);
+
+  const removeCustomSection = useCallback((id: string) => {
+    setResume((prev) => ({
+      ...prev,
+      customSections: (prev.customSections || []).filter((s) => s.id !== id),
+    }));
+  }, []);
+
+  const toggleCustomSection = useCallback((id: string) => {
+    setResume((prev) => ({
+      ...prev,
+      customSections: (prev.customSections || []).map((s) =>
+        s.id === id ? { ...s, isSelected: s.isSelected !== false } : s
+      ),
+    }));
+  }, []);
+
   const setLanguage = useCallback((targetLang: ResumeLanguage) => {
     setResume((prev) => {
       const current = prev.language || "en";
@@ -125,6 +168,10 @@ export function useCurator(initialResume: ResumePayload) {
     toggleExperience,
     updateExperienceBullets,
     updateSkillCategoryItems,
+    addCustomSection,
+    updateCustomSection,
+    removeCustomSection,
+    toggleCustomSection,
     regenerateSummaryWithAI: requestAIRewrite,
     requestAIRewrite,
   };

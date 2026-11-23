@@ -7,6 +7,8 @@ import type {
   SkillCategory,
   TechnicalProject,
   WorkExperience,
+  CustomSection,
+  CustomSectionItem,
 } from "@/core/entities/ResumePayload";
 
 // Tolerant schema accepting either camelCase (web ResumePayload) or snake_case (robot schema v2.0).
@@ -83,6 +85,27 @@ const EducationSchema = z
   })
   .passthrough();
 
+const CustomSectionEntrySchema = z.object({
+  title: z.string().optional(),
+  heading: z.string().optional(),
+  description: z.string().optional(),
+  desc: z.string().optional(),
+  content: z.string().optional(),
+}).passthrough();
+
+const CustomSectionItemSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().optional(),
+  heading: z.string().optional(),
+  items: z.union([z.array(z.string()), z.array(CustomSectionEntrySchema)]).optional(),
+  bullets: z.array(CustomSectionEntrySchema).optional(),
+  bullet_points: z.array(CustomSectionEntrySchema).optional(),
+  isSelected: z.boolean().optional(),
+  is_selected: z.boolean().optional(),
+}).passthrough();
+
+const CustomSectionsSchema = z.array(CustomSectionItemSchema);
+
 export const DraftPayloadSchema = z
   .object({
     profile: ProfileSchema.optional(),
@@ -106,6 +129,8 @@ export const DraftPayloadSchema = z
         z.record(z.string(), z.any()),
       ])
       .optional(),
+    custom_sections: z.union([z.array(CustomSectionsSchema), z.record(z.string(), z.any())]).optional(),
+    customSections: CustomSectionsSchema.optional(),
   })
   .passthrough()
   .refine(
@@ -370,12 +395,44 @@ export function normalizeDraftPayload(raw: any): ResumePayload {
     gpa: pick(edu.gpa),
   }));
 
+  // Normalize custom sections
+  const rawCustomSections = raw?.customSections || raw?.custom_sections || [];
+
+  const normalizeItems = (rawItems: any[]): { title: string; description: string }[] => {
+    return rawItems.map((item: any) => {
+      if (typeof item === "string") {
+        return { title: "", description: item };
+      }
+      if (item && typeof item === "object") {
+        return {
+          title: item.title || item.heading || item.content || "",
+          description: item.description || item.desc || item.content || item.bulletPoints || item.items || "",
+        };
+      }
+      return { title: "", description: "" };
+    });
+  };
+
+  const customSections: CustomSection[] = Array.isArray(rawCustomSections)
+    ? rawCustomSections
+        .filter((s: any) => s && (s.title || s.heading) && (s.items || s.bullets || s.bullet_points))
+        .map((s: any) => {
+          const rawItems = Array.isArray(s.items) ? s.items : (Array.isArray(s.bullets) ? s.bullets : []);
+          return {
+            id: s.id || crypto?.randomUUID?.() || `custom-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+            title: s.title || s.heading || "Section",
+            items: normalizeItems(rawItems),
+          };
+        })
+    : [];
+
   return {
     profile,
     experiences,
     projects,
     skills,
     education,
+    customSections,
     language: (raw?.language as ResumeLanguage) || "en",
   };
 }

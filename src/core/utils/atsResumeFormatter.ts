@@ -274,5 +274,6 @@ export function formatCanonicalAtsResume(
     projects: selectedProjects,
     skills,
     education,
+    customSections: resume.customSections || [],
   };
 }

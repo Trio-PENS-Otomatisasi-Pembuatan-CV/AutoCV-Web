@@ -64,6 +64,10 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
     toggleExperience,
     updateExperienceBullets,
     updateSkillCategoryItems,
+    addCustomSection,
+    updateCustomSection,
+    removeCustomSection,
+    toggleCustomSection,
     regenerateSummaryWithAI,
     requestAIRewrite,
     setLanguage,
@@ -151,6 +155,10 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
               onToggleExperience={toggleExperience}
               onUpdateExperienceBullets={updateExperienceBullets}
               onUpdateSkillCategoryItems={updateSkillCategoryItems}
+              onAddCustomSection={addCustomSection}
+              onUpdateCustomSection={updateCustomSection}
+              onRemoveCustomSection={removeCustomSection}
+              onToggleCustomSection={toggleCustomSection}
               onRegenerateSummary={regenerateSummaryWithAI}
               onRequestAIRewrite={requestAIRewrite}
               onRerunSynthesis={() => setResume(resumeData)}
