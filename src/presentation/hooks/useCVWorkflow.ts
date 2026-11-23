@@ -291,7 +291,7 @@ export function useCVWorkflow() {
           setStatus(res.status);
           setProgressPercent(res.progressPercent);
 
-          if (res.draftData) {
+          if (res.draftData && !isApprovingRef.current) {
             setResumeData(res.draftData);
           }
 
