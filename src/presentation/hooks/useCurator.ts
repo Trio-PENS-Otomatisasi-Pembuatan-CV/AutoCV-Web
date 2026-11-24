@@ -4,7 +4,7 @@ import { translateResumePayload } from "@/core/utils/atsTranslator";
 
 function generateId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
-  return `custom-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+  return `custom-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 }
 
 export function useCurator(initialResume: ResumePayload) {

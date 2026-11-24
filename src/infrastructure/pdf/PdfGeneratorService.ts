@@ -98,7 +98,7 @@ export function buildAtsResumeHtml(resume: ResumePayload): string {
 
   ${resume.customSections?.length ? `
     ${resume.customSections.map((section) => {
-      const itemsHtml = (section.items || []).map((entry: any) => {
+      const itemsHtml = (section.items || []).map((entry) => {
         const title = entry?.title || "";
         const desc = entry?.description || "";
         if (title) {

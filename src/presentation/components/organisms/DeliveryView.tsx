@@ -64,7 +64,6 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
   emailSendError,
 }) => {
   const [copied, setCopied] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
   const [viewMode, setViewMode] = useState<"layout" | "pdf">("layout");
 
   const effectivePdfUrl = pdfUrl || (jobId ? `/api/cv/jobs/${jobId}/download` : null);
@@ -73,8 +72,6 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
     if (onResendEmail) {
       onResendEmail();
     }
-    setEmailSent(true);
-    setTimeout(() => setEmailSent(false), 3000);
   };
 
   const handleCopyLink = () => {

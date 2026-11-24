@@ -228,6 +228,12 @@ function statusDelay(status: JobStatus): number {
   }
 }
 
+function isAutoAdvanceEnabled(): boolean {
+  if (process.env.MOCK_AUTO_ADVANCE === "false") return false;
+  if (process.env.NEXT_PUBLIC_MOCK_AUTO_ADVANCE === "false") return false;
+  return true;
+}
+
 export class MockUiPathGateway implements IUiPathGateway {
   async submitJob(request: GenerateCVRequestDTO): Promise<JobSubmission> {
     const jobId =
@@ -238,11 +244,14 @@ export class MockUiPathGateway implements IUiPathGateway {
     createJob(jobId, request, JobStatus.PENDING);
     updateJob(jobId, { progress: progressForStatus(JobStatus.PENDING) });
 
-    this.advanceJob(jobId, request);
+    if (isAutoAdvanceEnabled()) {
+      this.advanceJob(jobId, request);
+    }
     return { jobId };
   }
 
   private advanceJob(jobId: string, request: GenerateCVRequestDTO) {
+    if (!isAutoAdvanceEnabled()) return;
     const job = getJob(jobId);
     if (!job) return;
     const status = job.status;
@@ -257,6 +266,7 @@ export class MockUiPathGateway implements IUiPathGateway {
     }
 
     setTimeout(() => {
+      if (!isAutoAdvanceEnabled()) return;
       const next = getNextStatus(status);
       if (!next) return;
 
@@ -305,22 +315,26 @@ export class MockUiPathGateway implements IUiPathGateway {
       progress: progressForStatus(JobStatus.GENERATING_PDF),
     });
 
-    setTimeout(() => {
-      updateJob(jobId, {
-        status: JobStatus.DELIVERING_EMAIL,
-        progress: progressForStatus(JobStatus.DELIVERING_EMAIL),
-      });
-
+    if (isAutoAdvanceEnabled()) {
       setTimeout(() => {
+        if (!isAutoAdvanceEnabled()) return;
         updateJob(jobId, {
-          status: JobStatus.COMPLETED,
-          progress: 100,
-          downloadUrl: `/api/cv/jobs/${jobId}/download`,
-          emailSent: true,
-          emailSentAt: new Date().toISOString(),
+          status: JobStatus.DELIVERING_EMAIL,
+          progress: progressForStatus(JobStatus.DELIVERING_EMAIL),
         });
-      }, statusDelay(JobStatus.DELIVERING_EMAIL));
-    }, statusDelay(JobStatus.GENERATING_PDF));
+
+        setTimeout(() => {
+          if (!isAutoAdvanceEnabled()) return;
+          updateJob(jobId, {
+            status: JobStatus.COMPLETED,
+            progress: 100,
+            downloadUrl: `/api/cv/jobs/${jobId}/download`,
+            emailSent: true,
+            emailSentAt: new Date().toISOString(),
+          });
+        }, statusDelay(JobStatus.DELIVERING_EMAIL));
+      }, statusDelay(JobStatus.GENERATING_PDF));
+    }
   }
 
   async downloadCv(jobId: string): Promise<Blob> {
@@ -344,7 +358,7 @@ export class MockUiPathGateway implements IUiPathGateway {
           });
           const newest = path.join(outputsDir, files[0]);
           const buffer = fs.readFileSync(newest);
-          return new Blob([buffer], { type: "application/pdf" });
+          return new Blob([new Uint8Array(buffer)], { type: "application/pdf" });
         }
       }
     } catch {
@@ -354,30 +368,14 @@ export class MockUiPathGateway implements IUiPathGateway {
     const job = getJob(jobId);
     if (job?.pdfBase64) {
       const buffer = Buffer.from(job.pdfBase64, "base64");
-      const readable = new ReadableStream({
-        start(controller) {
-          controller.enqueue(buffer);
-          controller.close();
-        }
-      });
-      return new Response(readable, {
-        headers: { "Content-Type": "application/pdf" },
-      }) as any;
+      return new Blob([new Uint8Array(buffer)], { type: "application/pdf" });
     }
 
     if (job?.draftData) {
       const { generateAtsPdf } = await import("@/infrastructure/pdf/PdfGeneratorService");
       const buffer = await generateAtsPdf(job.draftData);
       updateJob(jobId, { pdfBase64: buffer.toString("base64") });
-      const readable = new ReadableStream({
-        start(controller) {
-          controller.enqueue(buffer);
-          controller.close();
-        }
-      });
-      return new Response(readable, {
-        headers: { "Content-Type": "application/pdf" },
-      }) as any;
+      return new Blob([new Uint8Array(buffer)], { type: "application/pdf" });
     }
 
     const { generateAtsPdf } = await import("@/infrastructure/pdf/PdfGeneratorService");
@@ -387,14 +385,6 @@ export class MockUiPathGateway implements IUiPathGateway {
       projects: [],
       skills: [],
     });
-    const readable = new ReadableStream({
-      start(controller) {
-        controller.enqueue(buffer);
-        controller.close();
-      }
-    });
-    return new Response(readable, {
-      headers: { "Content-Type": "application/pdf" },
-    }) as any;
+    return new Blob([new Uint8Array(buffer)], { type: "application/pdf" });
   }
 }

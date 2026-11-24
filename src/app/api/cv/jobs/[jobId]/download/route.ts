@@ -31,15 +31,6 @@ export async function GET(
     try {
       const gateway = getUiPathGateway();
       const result = await gateway.downloadCv(jobId);
-      if (result instanceof Response) {
-        const arrayBuffer = await result.arrayBuffer();
-        return new NextResponse(arrayBuffer, {
-          headers: {
-            "Content-Type": "application/pdf",
-            "Content-Disposition": `${dispositionType}; filename="ATS_Resume_${name}.pdf"`,
-          },
-        });
-      }
       const arrayBuffer = await result.arrayBuffer();
 
       return new NextResponse(arrayBuffer, {

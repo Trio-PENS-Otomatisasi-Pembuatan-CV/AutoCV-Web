@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import type { WorkflowStep } from "../components/organisms/StepSwitcherBar";
+import type { WorkflowStep } from "../types/workflow";
 
 export interface UserSession {
   name: string;
@@ -15,6 +15,7 @@ interface UseAuthSessionOptions {
 export function useAuthSession(options?: UseAuthSessionOptions) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+  const onStepChange = options?.onStepChange;
 
   // Initialize auth state from browser storage
   useEffect(() => {
@@ -27,7 +28,7 @@ export function useAuthSession(options?: UseAuthSessionOptions) {
           const parsed: UserSession = JSON.parse(userStr);
           setCurrentUser(parsed);
           setIsAuthenticated(true);
-          options?.onStepChange?.("input");
+          onStepChange?.("input");
           return;
         } catch {
           // Fall through to unauthenticated
@@ -35,11 +36,11 @@ export function useAuthSession(options?: UseAuthSessionOptions) {
       }
 
       setIsAuthenticated(false);
-      options?.onStepChange?.("login");
+      onStepChange?.("login");
     }, 0);
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [onStepChange]);
 
   const login = useCallback(
     (userData?: UserSession) => {

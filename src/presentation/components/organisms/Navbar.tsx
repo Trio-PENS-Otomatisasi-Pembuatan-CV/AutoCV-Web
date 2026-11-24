@@ -5,10 +5,8 @@ export interface NavbarProps {
   onBackToInput?: () => void;
   activeProfileName?: string;
   activeProfileHeadline?: string;
-  onExportHistoryClick?: () => void;
   onSignOut?: () => void;
   userName?: string;
-  userEmail?: string;
   isDark?: boolean;
   onToggleTheme?: () => void;
 }
@@ -17,6 +15,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   onBackToInput,
   activeProfileName,
   activeProfileHeadline,
+  onSignOut,
+  userName,
   isDark = false,
   onToggleTheme,
 }) => {
@@ -109,6 +109,17 @@ export const Navbar: React.FC<NavbarProps> = ({
               aria-label="Toggle dark mode"
             >
               {isDark ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+            </button>
+          )}
+
+          {onSignOut && (
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="text-xs text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 font-medium px-2 py-1 transition-colors cursor-pointer"
+              title={userName ? `Keluar (${userName})` : "Keluar"}
+            >
+              Keluar
             </button>
           )}
 

@@ -8,7 +8,6 @@ import type {
   TechnicalProject,
   WorkExperience,
   CustomSection,
-  CustomSectionItem,
 } from "@/core/entities/ResumePayload";
 
 // Tolerant schema accepting either camelCase (web ResumePayload) or snake_case (robot schema v2.0).
@@ -98,13 +97,14 @@ const CustomSectionItemSchema = z.object({
   title: z.string().optional(),
   heading: z.string().optional(),
   items: z.union([z.array(z.string()), z.array(CustomSectionEntrySchema)]).optional(),
-  bullets: z.array(CustomSectionEntrySchema).optional(),
-  bullet_points: z.array(CustomSectionEntrySchema).optional(),
-  isSelected: z.boolean().optional(),
-  is_selected: z.boolean().optional(),
+  bullets: z.union([z.array(z.string()), z.array(CustomSectionEntrySchema)]).optional(),
+  bullet_points: z.union([z.array(z.string()), z.array(CustomSectionEntrySchema)]).optional(),
 }).passthrough();
 
-const CustomSectionsSchema = z.array(CustomSectionItemSchema);
+const CustomSectionsSchema = z.union([
+  z.array(CustomSectionItemSchema),
+  z.array(z.string()),
+]);
 
 export const DraftPayloadSchema = z
   .object({
@@ -116,47 +116,61 @@ export const DraftPayloadSchema = z
     workExperience: z.array(ExperienceSchema).optional(),
     projects: z.array(ProjectSchema).optional(),
     repositories: z.array(ProjectSchema).optional(),
-    skills: z.union([z.array(SkillCategorySchema), z.record(z.string(), z.any())]).optional(),
+    skills: z.union([z.array(SkillCategorySchema), z.record(z.string(), z.unknown())]).optional(),
     education: z
       .union([
         z.array(EducationSchema),
-        z.record(z.string(), z.any()),
+        z.record(z.string(), z.unknown()),
       ])
       .optional(),
     educations: z
       .union([
         z.array(EducationSchema),
-        z.record(z.string(), z.any()),
+        z.record(z.string(), z.unknown()),
       ])
       .optional(),
-    custom_sections: z.union([z.array(CustomSectionsSchema), z.record(z.string(), z.any())]).optional(),
+    custom_sections: z.union([z.array(CustomSectionsSchema), z.record(z.string(), z.unknown())]).optional(),
     customSections: CustomSectionsSchema.optional(),
   })
-  .passthrough()
-  .refine(
-    (d) => d.profile || d.personal_info || d.personalInfo,
-    { message: "Missing profile / personal_info in draft payload" }
-  );
+  .passthrough();
 
-export type RawDraftPayload = z.infer<typeof DraftPayloadSchema>;
+export type DraftPayloadDTO = z.infer<typeof DraftPayloadSchema>;
 
-function pick<T>(...vals: (T | undefined)[]): T | undefined {
-  return vals.find((v) => v !== undefined && v !== null);
-}
-
-function pickStr(...vals: (string | undefined)[]): string {
-  return pick(...vals) ?? "";
-}
-
-function cleanProjectSummary(name: string, desc?: string, lang?: string, stack?: string[]): string {
-  if (desc && desc.trim()) return desc.trim();
-  const tech = lang || (stack && stack[0]) || "";
-  const lower = (name || "").toLowerCase();
-  if (lower.includes("doc")) {
-    return "Comprehensive technical documentation and architectural specifications for software workflows.";
+function pick<T>(...values: (T | undefined | null)[]): T | undefined {
+  for (const v of values) {
+    if (v !== undefined && v !== null && v !== "") return v;
   }
-  if (lower.includes("devsecops") || lower.includes("infra")) {
-    return `Automated CI/CD security scanning pipelines and infrastructure deployment configurations${tech ? ` with ${tech}` : ""}.`;
+  return undefined;
+}
+
+function pickStr(...values: (string | undefined | null)[]): string {
+  for (const v of values) {
+    if (typeof v === "string" && v.trim().length > 0) return v.trim();
+  }
+  return "";
+}
+
+function cleanProjectSummary(name: string, rawSummary?: string, language?: string, techStack?: string[]): string {
+  if (rawSummary && rawSummary.trim().length > 15) {
+    return rawSummary.trim();
+  }
+  const tech = (techStack && techStack.length > 0 ? techStack : language ? [language] : []).slice(0, 3).join(", ");
+  const lower = name.toLowerCase();
+
+  if (lower.includes("bot") || lower.includes("automation") || lower.includes("robot")) {
+    return `Automated workflow pipeline and enterprise integration service${tech ? ` developed with ${tech}` : ""}.`;
+  }
+  if (lower.includes("scheduler") || lower.includes("distributed") || lower.includes("queue")) {
+    return `Distributed task processing infrastructure with concurrency management and fault-tolerant architecture${tech ? ` leveraging ${tech}` : ""}.`;
+  }
+  if (lower.includes("rag") || lower.includes("ai") || lower.includes("llm") || lower.includes("agent")) {
+    return `Intelligent natural language search and generative processing pipeline${tech ? ` using ${tech}` : ""}.`;
+  }
+  if (lower.includes("api") || lower.includes("gateway")) {
+    return `High-throughput REST API gateway with schema validation and rate limiting${tech ? ` implemented in ${tech}` : ""}.`;
+  }
+  if (lower.includes("resume") || lower.includes("cv")) {
+    return `Modern automated document generation engine with responsive templates${tech ? ` built with ${tech}` : ""}.`;
   }
   if (lower.includes("workshop")) {
     return `Hands-on container orchestration, system administration, and network configuration laboratory repository${tech ? ` using ${tech}` : ""}.`;
@@ -173,19 +187,19 @@ function cleanProjectSummary(name: string, desc?: string, lang?: string, stack?:
   return `Engineered modular technical software solution${tech ? ` using ${tech}` : ""} following clean architecture principles.`;
 }
 
-function cleanExperienceList(rawExps: any[]): WorkExperience[] {
+function cleanExperienceList(rawExps: Record<string, unknown>[]): WorkExperience[] {
   const noiseKeywords = /^(present|on-site|onsite|hybrid|remote|\+?\d+\s*skills?)$/i;
   const durationPattern = /^(\d+\s*(yr|mos|year|month)|·|\d+\s*mo)/i;
   const dateRangePattern = /^[A-Za-z]{3}\s*\d{4}\s*[-–]\s*([A-Za-z]{3}\s*\d{4}|Present)/i;
   const singleDatePattern = /^[A-Za-z]{3}\s*\d{4}(\s*·\s*\d+\s*mo)?/i;
 
   return rawExps.map((e, idx) => {
-    let role = pickStr(e.role, e.position, "Contributor").trim();
-    let company = pickStr(e.company, e.organization, "Organization").trim();
-    let startDate = pick(e.startDate, e.start_date);
-    let endDate = pick(e.endDate, e.end_date);
-    let location = e.location || "";
-    let rawPeriod = (e.period || "").trim();
+    let role = pickStr(e.role as string, e.position as string, "Contributor").trim();
+    let company = pickStr(e.company as string, e.organization as string, "Organization").trim();
+    let startDate = pick(e.startDate as string, e.start_date as string);
+    let endDate = pick(e.endDate as string, e.end_date as string);
+    let location = (e.location as string) || "";
+    let rawPeriod = ((e.period as string) || "").trim();
 
     if (durationPattern.test(company) || !company) {
       company = role || "Organization";
@@ -249,7 +263,7 @@ function cleanExperienceList(rawExps: any[]): WorkExperience[] {
     }
 
     return {
-      id: e.id ?? `exp-${idx + 1}`,
+      id: (e.id as string) ?? `exp-${idx + 1}`,
       company: company || "Organization",
       role: role || "Contributor",
       startDate: startDate || period || "Present",
@@ -261,42 +275,47 @@ function cleanExperienceList(rawExps: any[]): WorkExperience[] {
   });
 }
 
-function normSkills(raw: any): SkillCategory {
+function normSkills(raw: unknown): SkillCategory {
+  const r = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   return {
-    category: raw.category ?? "Other",
-    items: raw.items ?? [],
+    category: typeof r.category === "string" ? r.category : "Other",
+    items: Array.isArray(r.items) ? (r.items as string[]) : [],
   };
 }
 
-export function normalizeDraftPayload(raw: any): ResumePayload {
-  const linkedIn = raw?.linkedin_data || {};
-  const gitHub = raw?.github_data || {};
-  const targetRole = raw?.target_job_role || raw?.targetRole;
+export function normalizeDraftPayload(raw: Record<string, unknown> | ResumePayload | null | undefined): ResumePayload {
+  const r = (raw || {}) as Record<string, unknown>;
+  const linkedIn = (r.linkedin_data || {}) as Record<string, unknown>;
+  const gitHub = (r.github_data || {}) as Record<string, unknown>;
+  const gitHubUser = (gitHub.user || {}) as Record<string, unknown>;
+  const targetRole = (r.target_job_role || r.targetRole) as string | undefined;
 
-  const rawProfile = pick(raw?.profile, raw?.personal_info, raw?.personalInfo) || {};
-  const fallbackCandidate = pickStr(gitHub.user?.name, gitHub.user?.login, "Candidate");
-  const extractedName = pickStr(rawProfile.fullName, rawProfile.full_name, linkedIn.full_name, fallbackCandidate);
+  const rawProfile = (pick(r.profile, r.personal_info, r.personalInfo) || {}) as Record<string, unknown>;
+  const fallbackCandidate = pickStr(gitHubUser.name as string, gitHubUser.login as string, "Candidate");
+  const extractedName = pickStr(rawProfile.fullName as string, rawProfile.full_name as string, linkedIn.full_name as string, fallbackCandidate);
   const profile: ResumePayload["profile"] = {
     fullName: cleanFullName(extractedName, fallbackCandidate),
-    headline: pick(rawProfile.headline, linkedIn.headline, targetRole) || "Software Engineer",
-    email: pickStr(rawProfile.email, rawProfile.recipient_email),
-    phone: pick(rawProfile.phone),
-    location: pick(rawProfile.location, "Indonesia"),
+    headline: pick(rawProfile.headline as string, linkedIn.headline as string, targetRole) || "Software Engineer",
+    email: pickStr(rawProfile.email as string, rawProfile.recipient_email as string),
+    phone: pick(rawProfile.phone as string),
+    location: pick(rawProfile.location as string, "Indonesia"),
     summary: pickStr(
-      rawProfile.summary,
-      linkedIn.about,
+      rawProfile.summary as string,
+      linkedIn.about as string,
       targetRole ? `Accomplished engineering professional targeting ${targetRole} roles with proven expertise in software architecture, automation pipelines, and modern web systems.` : undefined
     ),
-    linkedinUrl: pick(rawProfile.linkedinUrl, rawProfile.linkedin_url),
-    githubUrl: pick(rawProfile.githubUrl, rawProfile.github_url),
+    linkedinUrl: pick(rawProfile.linkedinUrl as string, rawProfile.linkedin_url as string),
+    githubUrl: pick(rawProfile.githubUrl as string, rawProfile.github_url as string),
   };
 
   // Experiences
-  const rawExpsList = pick(raw?.experiences, raw?.work_experience, raw?.workExperience);
-  const rawExps: any[] =
+  const rawExpsList = pick(r.experiences, r.work_experience, r.workExperience);
+  const rawExps: Record<string, unknown>[] =
     Array.isArray(rawExpsList) && rawExpsList.length > 0
-      ? rawExpsList
-      : (linkedIn.experiences ?? []);
+      ? (rawExpsList as Record<string, unknown>[])
+      : Array.isArray(linkedIn.experiences)
+      ? (linkedIn.experiences as Record<string, unknown>[])
+      : [];
   let experiences = cleanExperienceList(rawExps);
 
   if (experiences.length === 0) {
@@ -329,50 +348,58 @@ export function normalizeDraftPayload(raw: any): ResumePayload {
   }
 
   // Projects
-  const rawProjsList = pick(raw?.projects, raw?.repositories);
-  const rawProjs: any[] =
+  const rawProjsList = pick(r.projects, r.repositories);
+  const rawProjs: Record<string, unknown>[] =
     Array.isArray(rawProjsList) && rawProjsList.length > 0
-      ? rawProjsList
-      : (gitHub.repositories ?? []);
+      ? (rawProjsList as Record<string, unknown>[])
+      : Array.isArray(gitHub.repositories)
+      ? (gitHub.repositories as Record<string, unknown>[])
+      : [];
 
   const projects: TechnicalProject[] = rawProjs.map((p, idx) => {
-    const name = pickStr(p.name, `Project ${idx + 1}`);
-    const language = p.language || (Array.isArray(p.topics) && p.topics.length > 0 ? p.topics[0] : undefined);
-    const techStack = p.techStack ?? p.tech_stack ?? (language ? [language] : []);
-    const rawSummary = pick(p.starSummary, p.star_summary, p.description);
+    const name = pickStr(p.name as string, `Project ${idx + 1}`);
+    const language = (p.language as string) || (Array.isArray(p.topics) && p.topics.length > 0 ? String(p.topics[0]) : undefined);
+    const techStack = (p.techStack ?? p.tech_stack ?? (language ? [language] : [])) as string[];
+    const rawSummary = pick(p.starSummary as string, p.star_summary as string, p.description as string);
     const starSummary = cleanProjectSummary(name, rawSummary, language, techStack);
 
     return {
-      id: p.id ?? `proj-${idx + 1}`,
+      id: (p.id as string) ?? `proj-${idx + 1}`,
       name,
-      repoUrl: pickStr(p.repoUrl, p.repo_url, p.html_url, p.url),
-      stars: p.stars ?? p.star_count ?? p.stargazers_count ?? 0,
+      repoUrl: pickStr(p.repoUrl as string, p.repo_url as string, p.html_url as string, p.url as string),
+      stars: Number(p.stars ?? p.star_count ?? p.stargazers_count ?? 0),
       language,
       techStack,
       starSummary,
-      isSelected: p.isSelected ?? p.is_selected ?? (idx < 3),
+      isSelected: Boolean(p.isSelected ?? p.is_selected ?? (idx < 3)),
     };
   });
 
   // Skills
   let skills: SkillCategory[] = [];
-  if (Array.isArray(raw?.skills) && raw.skills.length > 0 && typeof raw.skills[0] === "object" && "category" in raw.skills[0]) {
-    skills = raw.skills.map(normSkills);
+  if (Array.isArray(r.skills) && r.skills.length > 0 && typeof r.skills[0] === "object" && r.skills[0] !== null && "category" in r.skills[0]) {
+    skills = (r.skills as unknown[]).map(normSkills);
   } else {
     // Extract languages from repositories
     if (Array.isArray(gitHub.repositories)) {
-      const langs = Array.from(new Set(gitHub.repositories.map((r: any) => r.language).filter(Boolean))) as string[];
+      const gitRepos = gitHub.repositories as Record<string, unknown>[];
+      const langs = Array.from(new Set(gitRepos.map((r) => r.language as string).filter(Boolean)));
       if (langs.length > 0) {
         skills.push({ category: "Programming Languages", items: langs });
       }
     }
-    const techItems: string[] = Array.isArray(linkedIn.skills) ? linkedIn.skills : [];
+    const techItems: string[] = Array.isArray(linkedIn.skills) ? (linkedIn.skills as string[]) : [];
     if (techItems.length > 0) {
       skills.push({ category: "Technical Skills", items: techItems });
     }
-    const certItems = Array.isArray(linkedIn.certifications)
-      ? linkedIn.certifications.map((c: any) => (typeof c === "string" ? c : c.name)).filter(Boolean)
-      : [];
+    const certs = Array.isArray(linkedIn.certifications) ? linkedIn.certifications : [];
+    const certItems = certs
+      .map((c: unknown) => {
+        if (typeof c === "string") return c;
+        if (c && typeof c === "object" && "name" in c) return String((c as Record<string, unknown>).name);
+        return "";
+      })
+      .filter(Boolean);
     if (certItems.length > 0) {
       skills.push({ category: "Certifications", items: certItems });
     }
@@ -382,31 +409,32 @@ export function normalizeDraftPayload(raw: any): ResumePayload {
   }
 
   // Education
-  const pickEdu = pick(raw?.education, raw?.educations, linkedIn.education);
-  const rawEdus: any[] = Array.isArray(pickEdu)
-    ? pickEdu
+  const pickEdu = pick(r.education, r.educations, linkedIn.education);
+  const rawEdus: Record<string, unknown>[] = Array.isArray(pickEdu)
+    ? (pickEdu as Record<string, unknown>[])
     : pickEdu && typeof pickEdu === "object"
-    ? [pickEdu]
+    ? [pickEdu as Record<string, unknown>]
     : [];
   const education: EducationRecord[] = rawEdus.map((edu) => ({
-    institution: pickStr(edu.institution),
-    degree: pickStr(edu.degree),
-    graduationYear: pick(edu.graduationYear, edu.graduation_year, edu.year),
-    gpa: pick(edu.gpa),
+    institution: pickStr(edu.institution as string),
+    degree: pickStr(edu.degree as string),
+    graduationYear: pick(edu.graduationYear as string, edu.graduation_year as string, edu.year as string),
+    gpa: pick(edu.gpa as string),
   }));
 
   // Normalize custom sections
-  const rawCustomSections = raw?.customSections || raw?.custom_sections || [];
+  const rawCustomSections = (r.customSections || r.custom_sections || []) as unknown[];
 
-  const normalizeItems = (rawItems: any[]): { title: string; description: string }[] => {
-    return rawItems.map((item: any) => {
+  const normalizeItems = (rawItems: unknown[]): { title: string; description: string }[] => {
+    return rawItems.map((item) => {
       if (typeof item === "string") {
         return { title: "", description: item };
       }
       if (item && typeof item === "object") {
+        const obj = item as Record<string, unknown>;
         return {
-          title: item.title || item.heading || item.content || "",
-          description: item.description || item.desc || item.content || item.bulletPoints || item.items || "",
+          title: String(obj.title || obj.heading || obj.content || ""),
+          description: String(obj.description || obj.desc || obj.content || obj.bulletPoints || obj.items || ""),
         };
       }
       return { title: "", description: "" };
@@ -414,13 +442,13 @@ export function normalizeDraftPayload(raw: any): ResumePayload {
   };
 
   const customSections: CustomSection[] = Array.isArray(rawCustomSections)
-    ? rawCustomSections
-        .filter((s: any) => s && (s.title || s.heading) && (s.items || s.bullets || s.bullet_points))
-        .map((s: any) => {
-          const rawItems = Array.isArray(s.items) ? s.items : (Array.isArray(s.bullets) ? s.bullets : []);
+    ? (rawCustomSections as Record<string, unknown>[])
+        .filter((s) => s && (s.title || s.heading) && (s.items || s.bullets || s.bullet_points))
+        .map((s) => {
+          const rawItems = Array.isArray(s.items) ? (s.items as unknown[]) : Array.isArray(s.bullets) ? (s.bullets as unknown[]) : [];
           return {
-            id: s.id || crypto?.randomUUID?.() || `custom-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-            title: s.title || s.heading || "Section",
+            id: String(s.id || `custom-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`),
+            title: String(s.title || s.heading || "Section"),
             items: normalizeItems(rawItems),
           };
         })
@@ -433,6 +461,6 @@ export function normalizeDraftPayload(raw: any): ResumePayload {
     skills,
     education,
     customSections,
-    language: (raw?.language as ResumeLanguage) || "en",
+    language: (r.language as ResumeLanguage) || "en",
   };
 }

@@ -30,9 +30,11 @@ export function useTypewriter({
 
     // Finished deleting -> move to next word and start typing
     if (isDeleting && subIndex === 0) {
-      setIsDeleting(false);
-      setIndex((prev) => (prev + 1) % words.length);
-      return;
+      const timeout = setTimeout(() => {
+        setIsDeleting(false);
+        setIndex((prev) => (prev + 1) % words.length);
+      }, typingSpeed);
+      return () => clearTimeout(timeout);
     }
 
     const timeout = setTimeout(() => {

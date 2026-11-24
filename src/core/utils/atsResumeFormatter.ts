@@ -3,7 +3,6 @@ import type {
   ResumeLanguage,
   WorkExperience,
   TechnicalProject,
-  SkillCategory,
   EducationRecord,
 } from "@/core/entities/ResumePayload";
 import { translateResumePayload } from "./atsTranslator";

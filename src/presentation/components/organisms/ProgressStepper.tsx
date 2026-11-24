@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { PipelineStageItem, StageStatus } from "../molecules/PipelineStageItem";
 import { Button } from "../atoms/Button";
 import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
-import { ArrowRight, Bot, Cpu, Clock, Activity } from "lucide-react";
+import { ArrowRight, Bot, Cpu, Clock } from "lucide-react";
 
 export interface ProgressStepperProps {
   jobId: string | null;
@@ -18,6 +18,7 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
   onContinueToCuration,
 }) => {
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const startTimeRef = useRef<number | null>(null);
 
   const isReadyForCuration =
     status === JobStatus.AWAITING_CURATION ||
@@ -32,10 +33,14 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
   useEffect(() => {
     let timer: NodeJS.Timeout | null = null;
     if (isRunning) {
-      setElapsedSeconds(0);
+      startTimeRef.current = Date.now();
       timer = setInterval(() => {
-        setElapsedSeconds((prev) => prev + 1);
+        if (startTimeRef.current) {
+          setElapsedSeconds(Math.floor((Date.now() - startTimeRef.current) / 1000));
+        }
       }, 1000);
+    } else {
+      startTimeRef.current = null;
     }
     return () => {
       if (timer) clearInterval(timer);
