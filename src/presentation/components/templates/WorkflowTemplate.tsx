@@ -46,11 +46,17 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
     formErrors,
     resumeData,
     setResumeData,
+    hasCurated,
+    emailSentTo,
+    emailSentAt,
+    isSendingEmail,
+    emailSendError,
     handleFormFieldChange,
     handleUseSample,
     handleSubmitJob,
     handleApproveCuration,
     handleDownloadPdf,
+    handleSendEmail,
   } = workflow;
 
   const {
@@ -62,6 +68,10 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
     toggleExperience,
     updateExperienceBullets,
     updateSkillCategoryItems,
+    addCustomSection,
+    updateCustomSection,
+    removeCustomSection,
+    toggleCustomSection,
     regenerateSummaryWithAI,
     requestAIRewrite,
   } = curator;
@@ -154,12 +164,17 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
             <div className="w-full transition-all duration-300">
               <CurationDashboard
                 resume={curatedResume}
+                language={curatedResume.language}
                 onUpdateProfile={updateProfile}
                 onUpdateSummary={updateSummary}
                 onToggleProject={toggleProject}
                 onToggleExperience={toggleExperience}
                 onUpdateExperienceBullets={updateExperienceBullets}
                 onUpdateSkillCategoryItems={updateSkillCategoryItems}
+                onAddCustomSection={addCustomSection}
+                onUpdateCustomSection={updateCustomSection}
+                onRemoveCustomSection={removeCustomSection}
+                onToggleCustomSection={toggleCustomSection}
                 onRegenerateSummary={regenerateSummaryWithAI}
                 onRequestAIRewrite={requestAIRewrite}
                 onRerunSynthesis={() => setResume(resumeData)}
@@ -191,6 +206,12 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
                 onDownloadPdf={handleDownloadPdf}
                 onBackToCuration={() => setCurrentStep("curation")}
                 onCreateAnother={() => setCurrentStep("input")}
+                recipientEmail={formData.recipientEmail}
+                emailSentTo={emailSentTo}
+                emailSentAt={emailSentAt}
+                isSendingEmail={isSendingEmail}
+                emailSendError={emailSendError}
+                onResendEmail={handleSendEmail}
                 onNavigateStep={(step) => {
                   if (step === "input") setCurrentStep("input");
                   else if (step === "curation") setCurrentStep("curation");

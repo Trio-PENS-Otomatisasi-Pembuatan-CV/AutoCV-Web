@@ -1,5 +1,6 @@
 import type { IUiPathGateway, JobProgress, JobSubmission } from "@/core/interfaces/IUiPathGateway";
 import type { GenerateCVRequestDTO } from "@/application/dto/GenerateCVRequestDTO";
+import type { ResumePayload } from "@/core/entities/ResumePayload";
 import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
 import { orchestratorAuth } from "./OrchestratorAuthClient";
 import { createJob, getJob, updateJob } from "@/infrastructure/storage/JobStore";
@@ -51,6 +52,17 @@ function prepareCompactCuratedPayload(raw: any): string {
 
   const skills = Array.isArray(raw?.skills) ? raw.skills : [];
 
+  const rawCustomSections = raw?.customSections || raw?.custom_sections || [];
+  const customSections = Array.isArray(rawCustomSections)
+    ? rawCustomSections
+        .filter((s: any) => s && s.isSelected !== false)
+        .map((s: any) => ({
+          id: s.id || `custom-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          title: s.title || s.heading || "Section",
+          items: Array.isArray(s.items) ? s.items : Array.isArray(s.bullets) ? s.bullets : [],
+        }))
+    : [];
+
   const compact = {
     profile: {
       fullName: profile.fullName || profile.name || "Candidate",
@@ -66,6 +78,7 @@ function prepareCompactCuratedPayload(raw: any): string {
     projects: selectedProjects,
     skills,
     education,
+    customSections,
     language: raw?.language || "en",
   };
 
@@ -346,10 +359,13 @@ export class LiveUiPathGateway implements IUiPathGateway {
       throw new Error(`Job '${jobId}' not found`);
     }
 
-    // Set optimistic state
+    const curatedPayload = curatedData || job.draftData;
+
+    // Set optimistic state with curated data persisted
     updateJob(jobId, {
       status: JobStatus.GENERATING_PDF,
       progress: 90,
+      draftData: curatedPayload as ResumePayload,
     });
 
     const token = await orchestratorAuth.getAccessToken();
@@ -360,7 +376,6 @@ export class LiveUiPathGateway implements IUiPathGateway {
     const webhookBaseUrl =
       process.env.BACKEND_WEBHOOK_BASE_URL?.replace(/\/+$/, "") || "http://localhost:3000";
 
-    const curatedPayload = curatedData || job.draftData;
     const compactCuratedJson = prepareCompactCuratedPayload(curatedPayload);
 
     const inputArgs = JSON.stringify({
@@ -434,6 +449,8 @@ export class LiveUiPathGateway implements IUiPathGateway {
       const name = job.draftData?.profile.fullName?.replace(/\s+/g, "_") || "";
       const userProfile = process.env.USERPROFILE || "";
       const searchDirs = [
+        path.resolve(process.cwd(), "..", "AutoCV-Robot", "Data", "Outputs"),
+        path.resolve(process.cwd(), "Data", "Outputs"),
         path.resolve(process.cwd(), "..", "robot", "Data", "Outputs"),
         path.join(userProfile, ".nuget", "packages", "autocv", "1.0.5", "content", "Data", "Outputs"),
       ];
@@ -456,20 +473,31 @@ export class LiveUiPathGateway implements IUiPathGateway {
     }
 
     if (pdfBase64) {
-      const binary = atob(pdfBase64);
-      const bytes = new Uint8Array(binary.length);
-      for (let i = 0; i < binary.length; i++) {
-        bytes[i] = binary.charCodeAt(i);
-      }
-      return new Blob([bytes], { type: "application/pdf" });
+      const buffer = Buffer.from(pdfBase64, "base64");
+      return new Blob([buffer], { type: "application/pdf" });
     }
 
-    if (job.downloadUrl) {
+    if (job.downloadUrl && /^https?:\/\//i.test(job.downloadUrl)) {
       const res = await fetch(job.downloadUrl);
       if (!res.ok) {
         throw new Error(`Failed to fetch PDF from URL: ${job.downloadUrl}`);
       }
       return res.blob();
+    }
+
+    if (job.draftData) {
+      const { generateAtsPdf } = await import("@/infrastructure/pdf/PdfGeneratorService");
+      const buffer = await generateAtsPdf(job.draftData);
+      updateJob(jobId, { pdfBase64: buffer.toString("base64") });
+      const readable = new ReadableStream({
+        start(controller) {
+          controller.enqueue(buffer);
+          controller.close();
+        }
+      });
+      return new Response(readable, {
+        headers: { "Content-Type": "application/pdf" },
+      }) as any;
     }
 
     throw new Error("PDF not ready or not found");

@@ -44,6 +44,18 @@ export interface SkillCategory {
   items: string[];
 }
 
+export interface CustomSectionItem {
+  title: string;
+  description: string;
+}
+
+export interface CustomSection {
+  id: string;
+  title: string;
+  items: CustomSectionItem[];
+  isSelected?: boolean;
+}
+
 export type ResumeLanguage = "en" | "id";
 
 export interface ResumePayload {
@@ -52,5 +64,6 @@ export interface ResumePayload {
   projects: TechnicalProject[];
   skills: SkillCategory[];
   education?: EducationRecord[];
+  customSections?: CustomSection[];
   language?: ResumeLanguage;
 }

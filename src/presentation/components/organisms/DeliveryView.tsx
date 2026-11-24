@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   PlusCircle,
   Eye,
+  Copy,
 } from "lucide-react";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 import type { AtsScoreResult } from "@/core/utils/atsScoreCalculator";
@@ -34,6 +35,11 @@ export interface DeliveryViewProps {
   onCreateAnother?: () => void;
   isDownloading?: boolean;
   onNavigateStep?: (step: "input" | "curation" | "delivery") => void;
+  recipientEmail?: string;
+  emailSentTo?: string | null;
+  emailSentAt?: string | null;
+  isSendingEmail?: boolean;
+  emailSendError?: string | null;
 }
 
 export const DeliveryView: React.FC<DeliveryViewProps> = ({
@@ -51,7 +57,13 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
   onCreateAnother,
   isDownloading = false,
   onNavigateStep,
+  recipientEmail,
+  emailSentTo,
+  emailSentAt,
+  isSendingEmail,
+  emailSendError,
 }) => {
+  const [copied, setCopied] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [viewMode, setViewMode] = useState<"layout" | "pdf">("layout");
 
@@ -65,6 +77,14 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
     setTimeout(() => setEmailSent(false), 3000);
   };
 
+  const handleCopyLink = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   const handlePrint = () => {
     if (typeof window !== "undefined") {
       window.print();
@@ -73,7 +93,6 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
 
   return (
     <div className="w-full">
-      {/* Header section */}
       <section className="text-center print:hidden">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-3.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200/60 dark:ring-emerald-900/60 ring-inset">
           <CheckCircle className="size-3.5 text-emerald-600 dark:text-emerald-400" />
@@ -96,7 +115,6 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
         />
       </div>
 
-      {/* Metrics Row */}
       <div className="mx-auto mt-8 grid max-w-[840px] grid-cols-2 sm:grid-cols-4 gap-4 print:hidden">
         <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 text-center shadow-xs">
           <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -207,25 +225,70 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center ml-auto">
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-3 shadow-xs">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                  Email Delivery
+                </p>
+
+                {emailSentTo ? (
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <CheckCircle className="size-4 flex-shrink-0 text-emerald-500" />
+                    <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400 truncate">
+                      {emailSentTo}
+                    </span>
+                    {emailSentAt && (
+                      <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">
+                        · {new Date(emailSentAt).toLocaleTimeString()}
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 truncate">
+                    {recipientEmail ?? (
+                      <span className="italic text-slate-400 dark:text-slate-500">No email provided</span>
+                    )}
+                  </p>
+                )}
+
+                {emailSendError && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{emailSendError}</p>
+                )}
+              </div>
+
+              <Button
+                variant={emailSentTo ? "secondary" : "primary"}
+                size="sm"
+                onClick={handleResend}
+                isLoading={isSendingEmail}
+                icon={<Mail className="size-4" />}
+                disabled={!recipientEmail || isSendingEmail}
+                className="flex-shrink-0"
+              >
+                {emailSentTo ? "Resend" : "Send to Email"}
+              </Button>
+            </div>
+          </div>
+
           <Button
-            variant="secondary"
-            size="md"
-            onClick={handleResend}
+            variant="ghost"
+            size="sm"
+            onClick={handleCopyLink}
             icon={
-              emailSent ? (
-                <Check className="size-4 text-emerald-600 dark:text-emerald-400" />
+              copied ? (
+                <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
               ) : (
-                <Mail className="size-4 text-blue-600 dark:text-blue-400" />
+                <Copy className="size-3.5 text-slate-500 dark:text-slate-400" />
               )
             }
           >
-            {emailSent ? "Sent to Email!" : "Resend Email"}
+            {copied ? "Copied Link!" : "Share Link"}
           </Button>
         </div>
       </div>
 
-      {/* Secondary Navigation Row: Back to Curation & Create Another Resume */}
       <div className="mx-auto mt-4 max-w-[840px] flex items-center justify-between px-2 print:hidden">
         {onBackToCuration && (
           <button
@@ -248,7 +311,6 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
         )}
       </div>
 
-      {/* Main Content Area: Document View OR Live PDF Previewer */}
       <div className="mx-auto mt-7 max-w-[840px]">
         {viewMode === "pdf" ? (
           <LivePdfPreviewer
