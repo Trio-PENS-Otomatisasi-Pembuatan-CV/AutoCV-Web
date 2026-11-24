@@ -96,18 +96,18 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
   };
 
   return (
-    <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-7 sm:p-8 shadow-sm">
+    <div className="mt-8 rounded-2xl border border-slate-200/90 dark:border-slate-800/90 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-7 sm:p-8 shadow-sm">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
         <div className="flex items-center gap-3">
-          <div className="grid size-9 place-items-center rounded-lg bg-blue-50 text-blue-600">
+          <div className="grid size-9 place-items-center rounded-lg bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
             <Bot className="size-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-slate-900">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white">
               Automation Pipeline
             </h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               job #{jobId || "ACV-2048"} · UiPath Orchestrator
             </p>
           </div>
@@ -115,23 +115,23 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
 
         <div className="flex items-center gap-2">
           {isRunning && (
-            <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-blue-700 bg-blue-50/80 px-2.5 py-1 rounded-full border border-blue-200">
-              <Clock className="size-3.5 text-blue-600 animate-spin" />
+            <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-blue-700 dark:text-blue-300 bg-blue-50/80 dark:bg-blue-950/50 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-900/60">
+              <Clock className="size-3.5 text-blue-600 dark:text-blue-400 animate-spin" />
               {elapsedSeconds}s / ~30s
             </span>
           )}
           {isRunning ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 border border-blue-200/50">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 dark:bg-blue-950/50 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300 border border-blue-200/50 dark:border-blue-900/60">
               <span className="size-2 rounded-full bg-blue-600 animate-ping" />
               Running Automation...
             </span>
           ) : isReadyForCuration ? (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200/50">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-900/60">
               <span className="size-2 rounded-full bg-emerald-600" />
               Pipeline Complete
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 dark:bg-slate-800 px-3 py-1 text-xs font-semibold text-slate-600 dark:text-slate-400">
               Idle
             </span>
           )}
@@ -140,11 +140,11 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
 
       {/* Progress Bar */}
       <div className="my-5">
-        <div className="flex items-center justify-between text-xs text-slate-500 font-medium mb-1.5">
+        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium mb-1.5">
           <span>Processing Pipeline</span>
           <span>{progressPercent}%</span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
           <div
             className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 rounded-full"
             style={{ width: `${progressPercent}%` }}
@@ -152,7 +152,7 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
         </div>
 
         {/* Live System Activity Detail */}
-        <div className="mt-3.5 flex items-start gap-2.5 rounded-xl bg-slate-50/80 border border-slate-200/70 p-3 text-xs text-slate-700">
+        <div className="mt-3.5 flex items-start gap-2.5 rounded-xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-200/70 dark:border-slate-700/60 p-3 text-xs text-slate-700 dark:text-slate-300">
           <span className="relative flex size-2.5 mt-0.5">
             {isRunning && (
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
@@ -164,9 +164,9 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
             ></span>
           </span>
           <div className="flex-1">
-            <p className="font-medium text-slate-800">{getStatusDetail()}</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Host: <strong className="text-slate-600 font-medium">AutoCV Cloud Orchestrator (LAPTOP-L6K57F1B)</strong> · Target Role: ATS Resume Engine · Cloud Orchestrator Dual-Sync
+            <p className="font-medium text-slate-800 dark:text-slate-200">{getStatusDetail()}</p>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">
+              Host: <strong className="text-slate-600 dark:text-slate-300 font-medium">AutoCV Cloud Orchestrator (LAPTOP-L6K57F1B)</strong> · Target Role: ATS Resume Engine · Cloud Orchestrator Dual-Sync
             </p>
           </div>
         </div>
@@ -203,9 +203,9 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
 
       {/* Action when ready */}
       {isReadyForCuration && onContinueToCuration && (
-        <div className="mt-7 pt-5 border-t border-slate-100 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-xs text-slate-600">
-            <Cpu className="size-4 text-blue-600" />
+        <div className="mt-7 pt-5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+            <Cpu className="size-4 text-blue-600 dark:text-blue-400" />
             <span>AI draft ready for review (#HumanInTheLead)</span>
           </div>
           <Button

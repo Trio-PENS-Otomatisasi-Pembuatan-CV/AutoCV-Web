@@ -29,13 +29,13 @@ export const Checkbox: React.FC<CheckboxProps> = ({
         className={`grid size-5 place-items-center rounded-md border transition-all ${
           checked
             ? "border-blue-600 bg-blue-600 text-white shadow-sm"
-            : "border-slate-300 bg-white hover:border-slate-400"
-        } ${disabled ? "bg-slate-100" : ""}`}
+            : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-slate-400 dark:hover:border-slate-500"
+        } ${disabled ? "bg-slate-100 dark:bg-slate-800" : ""}`}
         onClick={() => !disabled && onChange(!checked)}
       >
         {checked && <Check className="size-3.5 stroke-[3]" />}
       </div>
-      {label && <span className="text-sm font-medium text-slate-800">{label}</span>}
+      {label && <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{label}</span>}
     </label>
   );
 };

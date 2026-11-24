@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { submitCVJob, getCVJobStatus, approveCuratedCV, downloadCVPdf } from "@/infrastructure/api/cvService";
 import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
-import type { ResumePayload } from "@/core/entities/ResumePayload";
+import type { ResumePayload, ResumeLanguage } from "@/core/entities/ResumePayload";
+import { translateResumePayload } from "@/core/utils/atsTranslator";
 import type { WorkflowStep } from "../components/organisms/StepSwitcherBar";
 import type { InputFormData } from "../components/organisms/InputForm";
 
@@ -206,7 +207,12 @@ export function useCVWorkflow() {
     language: "id",
   });
 
-  const [resumeData, setResumeData] = useState<ResumePayload>(DEFAULT_RESUME_EN);
+  const formDataRef = useRef<InputFormData>(formData);
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+
+  const [resumeData, setResumeData] = useState<ResumePayload>(DEFAULT_RESUME_ID);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollStartRef = useRef<number>(0);
   const lastStatusRef = useRef<string>("");
@@ -224,21 +230,31 @@ export function useCVWorkflow() {
 
   const handleFormFieldChange = useCallback(
     (field: keyof InputFormData, value: string) => {
-      setFormData((prev) => ({ ...prev, [field]: value }));
+      setFormData((prev) => {
+        const next = { ...prev, [field]: value };
+        if (field === "language") {
+          const targetLang = value as ResumeLanguage;
+          setResumeData(targetLang === "en" ? DEFAULT_RESUME_EN : DEFAULT_RESUME_ID);
+        }
+        return next;
+      });
       setFormErrors((prev) => ({ ...prev, [field]: undefined }));
     },
     []
   );
 
   const handleUseSample = useCallback(() => {
-    setFormData({
-      linkedinUrl: "https://linkedin.com/in/johndoe",
-      githubUrl: "https://github.com/johndoe",
-      targetRole: "Senior Fullstack Engineer",
-      recipientEmail: "john.doe@example.com",
-      language: "en",
+    setFormData((prev) => {
+      const currentLang = prev.language || "id";
+      setResumeData(currentLang === "en" ? DEFAULT_RESUME_EN : DEFAULT_RESUME_ID);
+      return {
+        linkedinUrl: "https://linkedin.com/in/johndoe",
+        githubUrl: "https://github.com/johndoe",
+        targetRole: "Senior Fullstack Engineer",
+        recipientEmail: "john.doe@example.com",
+        language: currentLang,
+      };
     });
-    setResumeData(DEFAULT_RESUME_EN);
     setFormErrors({});
   }, []);
 
@@ -289,7 +305,12 @@ export function useCVWorkflow() {
           setProgressPercent(res.progressPercent);
 
           if (res.draftData) {
-            setResumeData(res.draftData);
+            const chosenLang = (formDataRef.current.language || "id") as ResumeLanguage;
+            const syncedDraft =
+              res.draftData.language === chosenLang
+                ? res.draftData
+                : translateResumePayload(res.draftData, chosenLang);
+            setResumeData(syncedDraft);
           }
 
           if (res.status === JobStatus.AWAITING_CURATION) {
@@ -381,7 +402,11 @@ export function useCVWorkflow() {
         // Mock-mode fallback simulation for offline frontend dev
         const mockJobId = "ACV-" + Math.floor(1000 + Math.random() * 9000);
         setJobId(mockJobId);
-        setResumeData(DEFAULT_RESUME_EN);
+        const chosenDraft =
+          (formData.language || "id") === "en"
+            ? DEFAULT_RESUME_EN
+            : DEFAULT_RESUME_ID;
+        setResumeData(chosenDraft);
         setStatus(JobStatus.SCRAPING_LINKEDIN);
         setProgressPercent(25);
 
