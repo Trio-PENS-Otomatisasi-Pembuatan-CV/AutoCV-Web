@@ -35,7 +35,6 @@ export interface CurationDashboardProps {
   onAddCustomSection?: (title: string) => void;
   onUpdateCustomSection?: (id: string, updates: Partial<CustomSection>) => void;
   onRemoveCustomSection?: (id: string) => void;
-  onToggleCustomSection?: (id: string) => void;
   onRegenerateSummary: () => void;
   onRequestAIRewrite?: () => void;
   onRerunSynthesis: () => void;
@@ -57,7 +56,6 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
   onAddCustomSection,
   onUpdateCustomSection,
   onRemoveCustomSection,
-  onToggleCustomSection,
   onRegenerateSummary,
   onRequestAIRewrite,
   onRerunSynthesis,
@@ -567,7 +565,7 @@ export const CurationDashboard: React.FC<CurationDashboardProps> = ({
                 width: zoom !== 100 ? `${100 * (100 / zoom)}%` : "100%",
               }}
             >
-              <ResumeDocument resume={resume} language={resume.language} />
+              <ResumeDocument resume={resume} language={language || resume.language} />
             </div>
           </div>
         </div>

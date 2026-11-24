@@ -46,7 +46,6 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
     formErrors,
     resumeData,
     setResumeData,
-    hasCurated,
     emailSentTo,
     emailSentAt,
     isSendingEmail,
@@ -71,7 +70,6 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
     addCustomSection,
     updateCustomSection,
     removeCustomSection,
-    toggleCustomSection,
     regenerateSummaryWithAI,
     requestAIRewrite,
   } = curator;
@@ -95,6 +93,8 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
           activeProfileHeadline={currentStep === "curation" ? curatedResume.profile.headline : undefined}
           isDark={isDark}
           onToggleTheme={toggleTheme}
+          onSignOut={onSignOut}
+          userName={currentUser?.name}
         />
 
         <main
@@ -174,7 +174,6 @@ export const WorkflowTemplate: React.FC<WorkflowTemplateProps> = ({
                 onAddCustomSection={addCustomSection}
                 onUpdateCustomSection={updateCustomSection}
                 onRemoveCustomSection={removeCustomSection}
-                onToggleCustomSection={toggleCustomSection}
                 onRegenerateSummary={regenerateSummaryWithAI}
                 onRequestAIRewrite={requestAIRewrite}
                 onRerunSynthesis={() => setResume(resumeData)}

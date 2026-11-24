@@ -1,5 +1,4 @@
-const LINKEDIN_URL_PATTERN =
-  /^https?:\/\/(www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_%]+\/?$/;
+import { LINKEDIN_URL_PATTERN } from "../constants/validationPatterns";
 
 export class LinkedInUrl {
   private constructor(private readonly _value: string) {}

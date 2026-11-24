@@ -9,77 +9,88 @@ import { genMockResume } from "./MockUiPathGateway";
 import fs from "fs";
 import path from "path";
 
-function prepareCompactCuratedPayload(raw: any): string {
+function prepareCompactCuratedPayload(raw: unknown): string {
+  let data: Record<string, unknown> = {};
   if (typeof raw === "string") {
     try {
-      raw = JSON.parse(raw);
+      data = JSON.parse(raw);
     } catch {
       return raw;
     }
+  } else if (raw && typeof raw === "object") {
+    data = raw as Record<string, unknown>;
   }
 
-  const profile = raw?.profile || raw?.personal_info || {};
-  const rawProjects = raw?.projects || raw?.repositories || [];
-  const selectedProjects = (Array.isArray(rawProjects) ? rawProjects : [])
-    .filter((p: any) => p && p.isSelected !== false)
-    .map((p: any) => ({
-      name: p.name || "",
-      techStack: p.techStack || (p.language ? [p.language] : []),
-      language: p.language || "",
-      repoUrl: p.repoUrl || p.repo_url || p.html_url || "",
-      starSummary: p.starSummary || p.star_summary || p.description || "",
+  const profile = ((data.profile || data.personal_info) as Record<string, unknown>) || {};
+  const rawProjects = Array.isArray(data.projects)
+    ? (data.projects as Record<string, unknown>[])
+    : Array.isArray(data.repositories)
+    ? (data.repositories as Record<string, unknown>[])
+    : [];
+  const selectedProjects = rawProjects
+    .filter((p) => p && p.isSelected !== false)
+    .map((p) => ({
+      name: String(p.name || ""),
+      techStack: Array.isArray(p.techStack) ? p.techStack : (p.language ? [p.language] : []),
+      language: String(p.language || ""),
+      repoUrl: String(p.repoUrl || p.repo_url || p.html_url || ""),
+      starSummary: String(p.starSummary || p.star_summary || p.description || ""),
       isSelected: true,
     }));
 
-  const experiences = (Array.isArray(raw?.experiences) ? raw.experiences : [])
-    .filter((e: any) => e && e.isSelected !== false)
-    .map((e: any) => ({
-    role: e.role || e.position || "",
-    company: e.company || "",
-    startDate: e.startDate || e.period || "",
-    endDate: e.endDate || "",
-    location: e.location || "",
-    bulletPoints: Array.isArray(e.bulletPoints) ? e.bulletPoints : (e.description ? [e.description] : []),
-    isSelected: true,
+  const rawExps = Array.isArray(data.experiences) ? (data.experiences as Record<string, unknown>[]) : [];
+  const experiences = rawExps
+    .filter((e) => e && e.isSelected !== false)
+    .map((e) => ({
+      role: String(e.role || e.position || ""),
+      company: String(e.company || ""),
+      startDate: String(e.startDate || e.period || ""),
+      endDate: String(e.endDate || ""),
+      location: String(e.location || ""),
+      bulletPoints: Array.isArray(e.bulletPoints) ? e.bulletPoints : (e.description ? [String(e.description)] : []),
+      isSelected: true,
+    }));
+
+  const rawEdu = Array.isArray(data.education) ? (data.education as Record<string, unknown>[]) : [];
+  const education = rawEdu.map((edu) => ({
+    degree: String(edu.degree || ""),
+    institution: String(edu.institution || ""),
+    graduationYear: String(edu.graduationYear || edu.year || ""),
+    gpa: String(edu.gpa || ""),
   }));
 
-  const education = (Array.isArray(raw?.education) ? raw.education : []).map((edu: any) => ({
-    degree: edu.degree || "",
-    institution: edu.institution || "",
-    graduationYear: edu.graduationYear || edu.year || "",
-    gpa: edu.gpa || "",
-  }));
+  const skills = Array.isArray(data.skills) ? data.skills : [];
 
-  const skills = Array.isArray(raw?.skills) ? raw.skills : [];
-
-  const rawCustomSections = raw?.customSections || raw?.custom_sections || [];
-  const customSections = Array.isArray(rawCustomSections)
-    ? rawCustomSections
-        .filter((s: any) => s && s.isSelected !== false)
-        .map((s: any) => ({
-          id: s.id || `custom-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-          title: s.title || s.heading || "Section",
-          items: Array.isArray(s.items) ? s.items : Array.isArray(s.bullets) ? s.bullets : [],
-        }))
+  const rawCustomSections = Array.isArray(data.customSections)
+    ? (data.customSections as Record<string, unknown>[])
+    : Array.isArray(data.custom_sections)
+    ? (data.custom_sections as Record<string, unknown>[])
     : [];
+  const customSections = rawCustomSections
+    .filter((s) => s && s.isSelected !== false)
+    .map((s) => ({
+      id: String(s.id || `custom-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`),
+      title: String(s.title || s.heading || "Section"),
+      items: Array.isArray(s.items) ? s.items : Array.isArray(s.bullets) ? s.bullets : [],
+    }));
 
   const compact = {
     profile: {
-      fullName: profile.fullName || profile.name || "Candidate",
-      headline: profile.headline || "",
-      email: profile.email || profile.recipient_email || "",
-      phone: profile.phone || "",
-      location: profile.location || "",
-      summary: profile.summary || "",
-      linkedinUrl: profile.linkedinUrl || profile.linkedin_url || "",
-      githubUrl: profile.githubUrl || profile.github_url || "",
+      fullName: String(profile.fullName || profile.name || "Candidate"),
+      headline: String(profile.headline || ""),
+      email: String(profile.email || profile.recipient_email || ""),
+      phone: String(profile.phone || ""),
+      location: String(profile.location || ""),
+      summary: String(profile.summary || ""),
+      linkedinUrl: String(profile.linkedinUrl || profile.linkedin_url || ""),
+      githubUrl: String(profile.githubUrl || profile.github_url || ""),
     },
     experiences,
     projects: selectedProjects,
     skills,
     education,
     customSections,
-    language: raw?.language || "en",
+    language: String(data.language || "en"),
   };
 
   return JSON.stringify(compact);
@@ -262,7 +273,7 @@ export class LiveUiPathGateway implements IUiPathGateway {
             }
           } else if (orchJob.State === "Successful") {
             if (orchJob.OutputArguments) {
-              let outArgs: any = {};
+              let outArgs: Record<string, unknown> = {};
               if (typeof orchJob.OutputArguments === "string" && orchJob.OutputArguments.trim().length > 0) {
                 try {
                   outArgs = JSON.parse(orchJob.OutputArguments);
@@ -270,7 +281,7 @@ export class LiveUiPathGateway implements IUiPathGateway {
                   console.warn("[LiveUiPathGateway] Could not parse OutputArguments JSON:", e);
                 }
               } else if (typeof orchJob.OutputArguments === "object" && orchJob.OutputArguments !== null) {
-                outArgs = orchJob.OutputArguments;
+                outArgs = orchJob.OutputArguments as Record<string, unknown>;
               }
 
               // Check if Job 2 is complete (out_JobStatus === "COMPLETED" or PDF path present or job in GENERATING_PDF)
@@ -279,7 +290,7 @@ export class LiveUiPathGateway implements IUiPathGateway {
                 Boolean(outArgs.out_OutputPdfPath) ||
                 job.status === JobStatus.GENERATING_PDF
               ) {
-                const pdfPath = outArgs.out_OutputPdfPath || "";
+                const pdfPath = String(outArgs.out_OutputPdfPath || "");
                 let pdfBase64: string | undefined;
                 const localPdfFile = findLocalPdfFile(pdfPath);
                 if (localPdfFile) {
@@ -297,7 +308,7 @@ export class LiveUiPathGateway implements IUiPathGateway {
                 });
               } else if (outArgs.out_JobStatus === "CURATING" || outArgs.out_DraftResumePayload) {
                 // Job 1 finished: Draft payload ready for curation
-                let rawDraft: any = null;
+                let rawDraft: Record<string, unknown> | null = null;
                 const rawPayload = outArgs.out_DraftResumePayload;
 
                 if (typeof rawPayload === "string" && rawPayload.trim().length > 0) {
@@ -307,7 +318,7 @@ export class LiveUiPathGateway implements IUiPathGateway {
                     console.warn("[LiveUiPathGateway] Could not parse out_DraftResumePayload as JSON:", parseErr);
                   }
                 } else if (typeof rawPayload === "object" && rawPayload !== null) {
-                  rawDraft = rawPayload;
+                  rawDraft = rawPayload as Record<string, unknown>;
                 }
 
                 // If robot returned an empty or invalid payload, safely fallback to existing webhook data or sample generator
@@ -383,7 +394,12 @@ export class LiveUiPathGateway implements IUiPathGateway {
       in_ApprovedResumePayload: compactCuratedJson,
       in_RecipientEmail: job.request?.recipientEmail || job.request?.email || "",
       in_WebhookBaseUrl: webhookBaseUrl,
-      in_Language: (curatedPayload as any)?.language || "en",
+      in_Language:
+        (typeof curatedPayload === "object" &&
+        curatedPayload !== null &&
+        "language" in curatedPayload
+          ? String((curatedPayload as Record<string, unknown>).language)
+          : "en") || "en",
     });
 
     const headers: Record<string, string> = {
@@ -474,7 +490,7 @@ export class LiveUiPathGateway implements IUiPathGateway {
 
     if (pdfBase64) {
       const buffer = Buffer.from(pdfBase64, "base64");
-      return new Blob([buffer], { type: "application/pdf" });
+      return new Blob([new Uint8Array(buffer)], { type: "application/pdf" });
     }
 
     if (job.downloadUrl && /^https?:\/\//i.test(job.downloadUrl)) {
@@ -489,15 +505,7 @@ export class LiveUiPathGateway implements IUiPathGateway {
       const { generateAtsPdf } = await import("@/infrastructure/pdf/PdfGeneratorService");
       const buffer = await generateAtsPdf(job.draftData);
       updateJob(jobId, { pdfBase64: buffer.toString("base64") });
-      const readable = new ReadableStream({
-        start(controller) {
-          controller.enqueue(buffer);
-          controller.close();
-        }
-      });
-      return new Response(readable, {
-        headers: { "Content-Type": "application/pdf" },
-      }) as any;
+      return new Blob([new Uint8Array(buffer)], { type: "application/pdf" });
     }
 
     throw new Error("PDF not ready or not found");

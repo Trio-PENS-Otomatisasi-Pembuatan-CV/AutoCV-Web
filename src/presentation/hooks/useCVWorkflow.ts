@@ -3,7 +3,7 @@ import { submitCVJob, getCVJobStatus, approveCuratedCV, downloadCVPdf, sendCVEma
 import { JobStatus } from "@/application/dto/GenerateCVRequestDTO";
 import type { ResumePayload, ResumeLanguage } from "@/core/entities/ResumePayload";
 import { translateResumePayload } from "@/core/utils/atsTranslator";
-import type { WorkflowStep } from "../components/organisms/StepSwitcherBar";
+import type { WorkflowStep } from "../types/workflow";
 import type { InputFormData } from "../components/organisms/InputForm";
 
 export const DEFAULT_RESUME_EN: ResumePayload = {
@@ -188,6 +188,10 @@ export const DEFAULT_RESUME_ID: ResumePayload = {
 
 export const DEFAULT_RESUME: ResumePayload = DEFAULT_RESUME_EN;
 
+const MAX_POLL_DURATION_MS = 4 * 60 * 1000;
+const MAX_NO_STATUS_CHANGE_MS = 180 * 1000;
+const MAX_POLL_ERRORS = 10;
+
 export function useCVWorkflow() {
   const [currentStep, setCurrentStep] = useState<WorkflowStep>("input");
   const [jobId, setJobId] = useState<string | null>(null);
@@ -229,10 +233,6 @@ export function useCVWorkflow() {
   useEffect(() => {
     isApprovingRef.current = isApproving;
   }, [isApproving]);
-
-  const MAX_POLL_DURATION_MS = 4 * 60 * 1000;
-  const MAX_NO_STATUS_CHANGE_MS = 180 * 1000;
-  const MAX_POLL_ERRORS = 10;
 
   const handleFormFieldChange = useCallback(
     (field: keyof InputFormData, value: string) => {
@@ -332,7 +332,7 @@ export function useCVWorkflow() {
 
             if (res.emailSent && res.emailSentAt && !emailSentFromWebhookRef.current) {
               const sentAddr =
-                formData.recipientEmail ||
+                formDataRef.current.recipientEmail ||
                 res.draftData?.profile?.email ||
                 "";
               if (sentAddr) {
@@ -491,7 +491,7 @@ export function useCVWorkflow() {
     if (typeof window !== "undefined") {
       window.print();
     }
-  }, [jobId, resumeData.profile.fullName]);
+  }, [jobId, resumeData.profile.fullName, resumeData.language]);
 
   const handleSendEmail = useCallback(async () => {
     if (!jobId) return;

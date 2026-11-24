@@ -14,17 +14,12 @@ export const CustomSectionItem: React.FC<CustomSectionItemProps> = ({
   onUpdateSection,
   onRemoveSection,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(true);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
   const [isAdding, setIsAdding] = useState(false);
-
-  const currentEntry = editingIndex !== null ? section.items[editingIndex] : null;
-  const editCurrentTitle = (currentEntry?.title || "").trim();
-  const editCurrentDescription = (currentEntry?.description || "").trim();
 
   const startEdit = (idx: number, entry: CustomSectionItemType) => {
     setEditingIndex(idx);

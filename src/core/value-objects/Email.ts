@@ -1,4 +1,4 @@
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { EMAIL_PATTERN } from "../constants/validationPatterns";
 
 export class Email {
   private constructor(private readonly _value: string) {}

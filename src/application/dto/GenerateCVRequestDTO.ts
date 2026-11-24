@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  EMAIL_PATTERN,
+  LINKEDIN_URL_PATTERN,
+  GITHUB_URL_PATTERN,
+} from "@/core/constants/validationPatterns";
 
 export enum JobStatus {
   PENDING = "PENDING",
@@ -11,12 +16,6 @@ export enum JobStatus {
   COMPLETED = "COMPLETED",
   FAILED = "FAILED",
 }
-
-const LINKEDIN_URL_PATTERN =
-  /^https?:\/\/(www\.)?linkedin\.com\/in\/[A-Za-z0-9\-_%]+\/?$/;
-const GITHUB_URL_PATTERN =
-  /^https?:\/\/(www\.)?github\.com\/[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\/[A-Za-z0-9._-]+)?\/?$/;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export const GenerateCVRequestSchema = z.object({
   linkedinUrl: z

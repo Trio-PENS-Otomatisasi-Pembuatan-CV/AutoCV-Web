@@ -10,14 +10,15 @@ import { WorkflowTemplate } from "@/presentation/components/templates/WorkflowTe
 export default function HomePage() {
   const workflow = useCVWorkflow();
   const curator = useCurator(workflow.resumeData);
+  const { setResume } = curator;
   const { isAuthenticated, currentUser, login, logout } = useAuthSession({
     onStepChange: workflow.setCurrentStep,
   });
 
   // Sync curator whenever workflow receives new draft data
   useEffect(() => {
-    curator.setResume(workflow.resumeData);
-  }, [workflow.resumeData, curator.setResume]);
+    setResume(workflow.resumeData);
+  }, [workflow.resumeData, setResume]);
 
   // Loading state while checking authentication session
   if (isAuthenticated === null) {

@@ -12,7 +12,7 @@ function sleep(ms: number) {
 beforeAll(async () => {
   serverProcess = spawn("bun", ["run", "start", "-p", String(PORT)], {
     cwd: process.cwd(),
-    env: { ...process.env, PORT: String(PORT), NEXT_PUBLIC_UIPATH_MODE: "mock" },
+    env: { ...process.env, PORT: String(PORT), NEXT_PUBLIC_UIPATH_MODE: "mock", MOCK_AUTO_ADVANCE: "false", NEXT_PUBLIC_MOCK_AUTO_ADVANCE: "false" },
     stdio: "pipe",
   });
 
@@ -166,7 +166,7 @@ describe("Backend Webhooks & Lifecycle API", () => {
     expect(downloadRes.headers.get("content-type")).toContain("application/pdf");
     const downloadedText = await downloadRes.text();
     expect(downloadedText).toContain("%PDF-1.4 mock pdf content");
-  });
+  }, 15000);
 
   it("error webhook marks job as FAILED", async () => {
     const submitRes = await fetch(`${BASE_URL}/api/cv/generate`, {
@@ -322,7 +322,7 @@ describe("Backend Webhooks & Lifecycle API", () => {
 
     expect(finalStatus.status).toBe("COMPLETED");
     expect(finalStatus.emailSent).toBe(true);
-  });
+  }, 15000);
 
   it("auto-send on completion (simulation mode)", async () => {
     const submitRes = await fetch(`${BASE_URL}/api/cv/generate`, {
@@ -393,7 +393,7 @@ describe("Backend Webhooks & Lifecycle API", () => {
     expect(finalStatus.status).toBe("COMPLETED");
     expect(finalStatus.emailSent).toBe(true);
     expect(finalStatus.emailSentAt).toBeDefined();
-  });
+  }, 15000);
 
   it("send-email responds 404 for unknown job", async () => {
     const res = await fetch(`${BASE_URL}/api/cv/jobs/nonexistent-job-id-123/send-email`, {

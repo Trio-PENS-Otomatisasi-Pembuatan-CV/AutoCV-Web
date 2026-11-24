@@ -1,21 +1,28 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 
 export type Theme = "light" | "dark";
 
+function subscribe() {
+  return () => {};
+}
+
 export function useTheme() {
   const [theme, setTheme] = useState<Theme>("light");
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
 
   useEffect(() => {
-    setMounted(true);
-    const stored = localStorage.getItem("autocv_theme") as Theme | null;
-    if (stored === "dark" || stored === "light") {
-      setTheme(stored);
-      document.documentElement.classList.toggle("dark", stored === "dark");
-    } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      setTheme("dark");
-      document.documentElement.classList.add("dark");
-    }
+    const timer = setTimeout(() => {
+      const stored = localStorage.getItem("autocv_theme") as Theme | null;
+      if (stored === "dark" || stored === "light") {
+        setTheme(stored);
+        document.documentElement.classList.toggle("dark", stored === "dark");
+      } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        setTheme("dark");
+        document.documentElement.classList.add("dark");
+      }
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const toggleTheme = useCallback(() => {
