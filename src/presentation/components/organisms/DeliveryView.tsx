@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { ResumeDocument } from "./ResumeDocument";
 import { LivePdfPreviewer } from "./LivePdfPreviewer";
+import { WorkflowFlowStepper } from "../molecules/WorkflowFlowStepper";
 import { Button } from "../atoms/Button";
 import {
   Download,
   FileText,
   Mail,
-  Copy,
   Check,
   Printer,
   ShieldCheck,
@@ -14,6 +14,7 @@ import {
   ArrowLeft,
   PlusCircle,
   Eye,
+  Copy,
 } from "lucide-react";
 import type { ResumePayload } from "@/core/entities/ResumePayload";
 import type { AtsScoreResult } from "@/core/utils/atsScoreCalculator";
@@ -27,13 +28,13 @@ export interface DeliveryViewProps {
   formatMetric?: ResumeMetricCard;
   methodologyMetric?: ResumeMetricCard;
   deliveryMetric?: ResumeMetricCard;
-  onLanguageChange?: (lang: "id" | "en") => void;
   onDownloadPdf: () => void;
   onDownloadWord?: () => void;
   onResendEmail?: () => void;
   onBackToCuration?: () => void;
   onCreateAnother?: () => void;
   isDownloading?: boolean;
+  onNavigateStep?: (step: "input" | "curation" | "delivery") => void;
   recipientEmail?: string;
   emailSentTo?: string | null;
   emailSentAt?: string | null;
@@ -49,13 +50,13 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
   formatMetric,
   methodologyMetric,
   deliveryMetric,
-  onLanguageChange,
   onDownloadPdf,
   onDownloadWord,
   onResendEmail,
   onBackToCuration,
   onCreateAnother,
   isDownloading = false,
+  onNavigateStep,
   recipientEmail,
   emailSentTo,
   emailSentAt,
@@ -68,20 +69,20 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
 
   const effectivePdfUrl = pdfUrl || (jobId ? `/api/cv/jobs/${jobId}/download` : null);
 
-  const handleCopyLink = () => {
-    if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
   const handleResend = () => {
     if (onResendEmail) {
       onResendEmail();
     }
     setEmailSent(true);
     setTimeout(() => setEmailSent(false), 3000);
+  };
+
+  const handleCopyLink = () => {
+    if (typeof window !== "undefined") {
+      navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handlePrint = () => {
@@ -93,70 +94,79 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
   return (
     <div className="w-full">
       <section className="text-center print:hidden">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200/60 ring-inset">
-          <CheckCircle className="size-3.5 text-emerald-600" />
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-3.5 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-200/60 dark:ring-emerald-900/60 ring-inset">
+          <CheckCircle className="size-3.5 text-emerald-600 dark:text-emerald-400" />
           ATS Verified &amp; #HumanInTheLead Approved
         </span>
-        <h1 className="mx-auto mt-4 max-w-[680px] text-3xl sm:text-[36px] font-bold tracking-tight text-slate-900">
+        <h1 className="mx-auto mt-4 max-w-[680px] text-3xl sm:text-[36px] font-bold tracking-tight text-slate-900 dark:text-white">
           Your ATS-Compliant Resume is Ready
         </h1>
-        <p className="mx-auto mt-3 max-w-[620px] text-sm text-slate-600 leading-relaxed">
+        <p className="mx-auto mt-3 max-w-[620px] text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
           Synthesized from your LinkedIn profile and selected GitHub achievements.
           Strictly formatted into single-column layout to pass modern Applicant Tracking Systems.
         </p>
       </section>
 
+      {/* Stepper Indicator (4-Step Flow) below description */}
+      <div className="mt-8 mb-4 max-w-[840px] mx-auto print:hidden">
+        <WorkflowFlowStepper
+          currentStep="delivery"
+          onNavigateStep={onNavigateStep}
+        />
+      </div>
+
       <div className="mx-auto mt-8 grid max-w-[840px] grid-cols-2 sm:grid-cols-4 gap-4 print:hidden">
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 text-center shadow-xs">
+          <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             ATS Score
           </p>
-          <p className="mt-1 text-2xl font-black text-emerald-600">
+          <p className="mt-1 text-2xl font-black text-emerald-600 dark:text-emerald-400">
             {atsScore?.label ?? "—"}
           </p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             {atsScore?.tier ?? ""}
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 text-center shadow-xs">
+          <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             Format
           </p>
-          <p className="mt-1 text-lg font-bold text-slate-900">
+          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
             {formatMetric?.label ?? "Single Column"}
           </p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             {formatMetric?.sublabel ?? "Standard ATS"}
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 text-center shadow-xs">
+          <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             Methodology
           </p>
-          <p className="mt-1 text-lg font-bold text-slate-900">
+          <p className="mt-1 text-lg font-bold text-slate-900 dark:text-white">
             {methodologyMetric?.label ?? "STAR Format"}
           </p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             {methodologyMetric?.sublabel ?? "Action Bullets"}
           </p>
         </div>
 
-        <div className="rounded-xl border border-slate-200 bg-white p-4 text-center shadow-xs">
-          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-4 text-center shadow-xs">
+          <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
             Delivery
           </p>
-          <p className="mt-1 text-lg font-bold text-blue-600">
+          <p className="mt-1 text-lg font-bold text-blue-600 dark:text-blue-400">
             {deliveryMetric?.label ?? "UiPath RPA"}
           </p>
-          <p className="mt-0.5 text-[11px] text-slate-500">
+          <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
             {deliveryMetric?.sublabel ?? "Word & PDF Export"}
           </p>
         </div>
       </div>
 
-      <div className="mx-auto mt-7 max-w-[840px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-wrap items-center justify-between gap-3 print:hidden">
+      {/* Main Action Bar */}
+      <div className="mx-auto mt-7 max-w-[840px] rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-5 shadow-sm flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap items-center gap-2.5">
           <Button
             variant="primary"
@@ -182,20 +192,21 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
               variant="secondary"
               size="md"
               onClick={onDownloadWord}
-              icon={<FileText className="size-4 text-blue-600" />}
+              icon={<FileText className="size-4 text-blue-600 dark:text-blue-400" />}
             >
               Word (.docx)
             </Button>
           )}
 
-          <div className="ml-2 inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+          {/* View Mode Switcher */}
+          <div className="ml-2 inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 p-1">
             <button
               type="button"
               onClick={() => setViewMode("layout")}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === "layout"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900"
+                  ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               Document View
@@ -205,8 +216,8 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
               onClick={() => setViewMode("pdf")}
               className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
                 viewMode === "pdf"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-500 hover:text-slate-900"
+                  ? "bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs"
+                  : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
               }`}
             >
               <Eye className="size-3" /> Live PDF Previewer
@@ -214,36 +225,36 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-xs">
+        <div className="flex flex-wrap items-center gap-2 ml-auto">
+          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/90 p-3 shadow-xs">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                <p className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                   Email Delivery
                 </p>
 
                 {emailSentTo ? (
                   <div className="mt-1 flex flex-wrap items-center gap-1.5">
                     <CheckCircle className="size-4 flex-shrink-0 text-emerald-500" />
-                    <span className="text-sm font-medium text-emerald-700 truncate">
+                    <span className="text-sm font-medium text-emerald-700 dark:text-emerald-400 truncate">
                       {emailSentTo}
                     </span>
                     {emailSentAt && (
-                      <span className="text-xs text-slate-400 flex-shrink-0">
+                      <span className="text-xs text-slate-400 dark:text-slate-500 flex-shrink-0">
                         · {new Date(emailSentAt).toLocaleTimeString()}
                       </span>
                     )}
                   </div>
                 ) : (
-                  <p className="mt-1 text-sm text-slate-600 truncate">
+                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 truncate">
                     {recipientEmail ?? (
-                      <span className="italic text-slate-400">No email provided</span>
+                      <span className="italic text-slate-400 dark:text-slate-500">No email provided</span>
                     )}
                   </p>
                 )}
 
                 {emailSendError && (
-                  <p className="mt-1 text-xs text-red-600">{emailSendError}</p>
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{emailSendError}</p>
                 )}
               </div>
 
@@ -267,9 +278,9 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
             onClick={handleCopyLink}
             icon={
               copied ? (
-                <Check className="size-3.5 text-emerald-600" />
+                <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
               ) : (
-                <Copy className="size-3.5" />
+                <Copy className="size-3.5 text-slate-500 dark:text-slate-400" />
               )
             }
           >
@@ -283,7 +294,7 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
           <button
             type="button"
             onClick={onBackToCuration}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
           >
             <ArrowLeft className="size-3.5" /> Back to Edit Curation
           </button>
@@ -293,7 +304,7 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
           <button
             type="button"
             onClick={onCreateAnother}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline cursor-pointer ml-auto"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:underline cursor-pointer ml-auto"
           >
             <PlusCircle className="size-3.5" /> Create Another Resume
           </button>
@@ -310,15 +321,15 @@ export const DeliveryView: React.FC<DeliveryViewProps> = ({
           />
         ) : (
           <div>
-            <div className="mb-2 flex items-center justify-between text-xs text-slate-400 print:hidden px-2">
+            <div className="mb-2 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 print:hidden px-2">
               <div className="flex items-center gap-2">
                 <span>ATS Document Preview (Standard Letter / A4)</span>
-                <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 text-[10.5px] font-semibold text-slate-700">
+                <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 dark:bg-slate-800 px-2 py-0.5 text-[10.5px] font-semibold text-slate-700 dark:text-slate-300">
                   {resume.language === "id" ? "🇮🇩 Bahasa Indonesia" : "🌐 English"}
                 </span>
               </div>
-              <span className="flex items-center gap-1 text-slate-500 font-medium">
-                <ShieldCheck className="size-3.5 text-emerald-600" /> ATS Parsable
+              <span className="flex items-center gap-1 text-slate-500 dark:text-slate-400 font-medium">
+                <ShieldCheck className="size-3.5 text-emerald-600 dark:text-emerald-400" /> ATS Parsable
               </span>
             </div>
             <ResumeDocument resume={resume} language={resume.language} />

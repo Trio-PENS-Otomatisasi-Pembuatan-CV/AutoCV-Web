@@ -32,7 +32,7 @@ export const ResumeDocument: React.FC<ResumeDocumentProps> = ({
   return (
     <article
       id="ats-resume-print-area"
-      className={`mx-auto w-full max-w-[780px] min-h-[1050px] bg-white px-8 py-10 sm:px-12 sm:py-12 text-[#0F172A] shadow-md border border-slate-200/90 rounded-sm font-sans print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none ${className}`}
+      className={`mx-auto w-full max-w-[780px] min-h-[1050px] bg-white px-8 py-10 sm:px-12 sm:py-12 text-[#0F172A] shadow-md dark:shadow-2xl border border-slate-200/90 dark:border-slate-700/80 rounded-sm font-sans print:shadow-none print:border-none print:p-0 print:m-0 print:max-w-none ${className}`}
       style={{ fontFamily: "'Calibri', 'Arial', sans-serif" }}
     >
       {/* Resume Header */}

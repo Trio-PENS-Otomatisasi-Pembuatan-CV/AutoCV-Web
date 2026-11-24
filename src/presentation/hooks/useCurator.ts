@@ -10,7 +10,7 @@ function generateId(): string {
 export function useCurator(initialResume: ResumePayload) {
   const [resume, setResume] = useState<ResumePayload>({
     ...initialResume,
-    language: initialResume.language || "en",
+    language: initialResume.language || "id",
   });
 
   const updateProfile = useCallback((updates: Partial<ResumePayload["profile"]>) => {
