@@ -193,7 +193,7 @@ function progressForStatus(status: JobStatus): number {
     case JobStatus.AI_SYNTHESIZING:
       return 70;
     case JobStatus.AWAITING_CURATION:
-      return 90;
+      return 100;
     case JobStatus.GENERATING_PDF:
       return 95;
     case JobStatus.DELIVERING_EMAIL:

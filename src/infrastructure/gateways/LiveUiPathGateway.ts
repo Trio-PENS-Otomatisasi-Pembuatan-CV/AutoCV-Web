@@ -330,7 +330,7 @@ export class LiveUiPathGateway implements IUiPathGateway {
                 const normalized = normalizeDraftPayload(draftToUse);
                 updateJob(jobId, {
                   status: JobStatus.AWAITING_CURATION,
-                  progress: 75,
+                  progress: 100,
                   draftData: normalized,
                 });
               }

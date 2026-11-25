@@ -25,6 +25,8 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
     status === JobStatus.GENERATING_PDF ||
     status === JobStatus.COMPLETED;
 
+  const displayProgress = isReadyForCuration ? 100 : progressPercent;
+
   const isRunning =
     status !== JobStatus.AWAITING_CURATION &&
     status !== JobStatus.COMPLETED &&
@@ -147,12 +149,12 @@ export const ProgressStepper: React.FC<ProgressStepperProps> = ({
       <div className="my-5">
         <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium mb-1.5">
           <span>Processing Pipeline</span>
-          <span>{progressPercent}%</span>
+          <span>{displayProgress}%</span>
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
           <div
             className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300 rounded-full"
-            style={{ width: `${progressPercent}%` }}
+            style={{ width: `${displayProgress}%` }}
           />
         </div>
 
